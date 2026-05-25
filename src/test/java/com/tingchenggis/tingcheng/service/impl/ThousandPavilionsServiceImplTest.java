@@ -187,12 +187,14 @@ class ThousandPavilionsServiceImplTest {
     @Test
     void getAccessibilityMatrix() {
         when(pavilionRepository.findAll()).thenReturn(List.of(p1, p2));
+        when(pavilionRepository.findById(1L)).thenReturn(Optional.of(p1));
+        when(pavilionRepository.findById(2L)).thenReturn(Optional.of(p2));
         double[][] matrix = service.getAccessibilityMatrix();
         assertEquals(2, matrix.length);
         assertEquals(2, matrix[0].length);
         assertEquals(0.0, matrix[0][0]);
         assertTrue(matrix[0][1] > 0);
-        assertEquals(matrix[0][1], matrix[1][0]);
+        assertEquals(matrix[0][1], matrix[1][0], 1e-10);
     }
 
     @Test

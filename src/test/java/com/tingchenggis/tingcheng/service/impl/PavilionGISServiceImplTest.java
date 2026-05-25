@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.mockito.Mock;
@@ -117,7 +118,7 @@ class PavilionGISServiceImplTest {
     @Test
     void getPavilionDensity_withRegion() {
         when(pavilionRepository.findAll()).thenReturn(List.of(p1, p2));
-        var envelope = gf.createEnvelope(118.0, 119.0, 32.0, 33.0);
+        var envelope = gf.toGeometry(new Envelope(118.0, 119.0, 32.0, 33.0));
 
         double density = service.getPavilionDensity(envelope);
 

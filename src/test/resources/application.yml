@@ -1,0 +1,26 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+
+tingcheng:
+  chuzhou-bounds:
+    min-lat: 31.8
+    max-lat: 33.0
+    min-lng: 117.8
+    max-lng: 119.2
+  pavilion-types:
+    - historical: "历史文化亭"
+    - modern: "现代景观亭"
+    - cultural: "文化主题亭"
+  ai:
+    enabled: true
+    model: "gpt-3.5-turbo"
