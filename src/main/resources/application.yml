@@ -1,0 +1,110 @@
+server:
+  port: 8092
+  servlet:
+    context-path:
+
+spring:
+  application:
+    name: tingchenggis-tingcheng
+
+  # 使用H2开发数据库
+  profiles:
+    active: dev
+
+---
+# 开发环境 - 使用H2内存数据库
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  h2:
+    console:
+      enabled: true
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+---
+# 生产环境 - 使用PostgreSQL/PostGIS数据库
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: jdbc:postgresql://localhost:5432/tingchenggis_pg
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  h2:
+    console:
+      enabled: true
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+logging:
+  level:
+    root: INFO
+    com.tingchenggis: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+  file:
+    name: logs/tingcheng.log
+    max-size: 10MB
+
+# 自定义亭城GIS配置
+tingcheng:
+  # 滁州地区坐标范围
+  chuzhou-bounds:
+    min-lat: 31.8
+    max-lat: 33.0
+    min-lng: 117.8
+    max-lng: 119.2
+  # 亭子分类配置
+  pavilion-types:
+    - historical: "历史文化亭"
+    - modern: "现代景观亭"
+    - cultural: "文化主题亭"
+  # AI配置
+  ai:
+    enabled: true
+    model: "gpt-3.5-turbo"
+
+# Spring AI配置（可选，需要有效的API密钥）
+# spring:
+#   ai:
+#     openai:
+#       api-key: ${OPENAI_API_KEY:your-api-key-here}
+#       chat:
+#         options:
+#           temperature: 0.7
+#           max-tokens: 1000

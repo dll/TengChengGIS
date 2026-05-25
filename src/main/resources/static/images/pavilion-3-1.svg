@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#82e0aa"/>
+      <stop offset="100%" stop-color="#d5f5e3"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#sky)"/>
+  <ellipse cx="320" cy="310" rx="265" ry="35" fill="#7cb87c" opacity="0.5"/>
+  <polygon points="100,310 150,200 200,310" fill="#1e8449" opacity="0.25"/>
+  <polygon points="450,310 500,190 550,310" fill="#145a32" opacity="0.25"/>
+  <rect x="270" y="200" width="100" height="60" fill="#27ae60" rx="3"/>
+  <rect x="263" y="250" width="114" height="13" fill="#1e8449"/>
+  <rect x="278" y="208" width="6" height="50" fill="#145a32"/>
+  <rect x="356" y="208" width="6" height="50" fill="#145a32"/>
+  <rect x="302" y="215" width="36" height="45" fill="#0e5530" rx="3"/>
+  <polygon points="242,200 320,130 398,200" fill="#1e8449"/>
+  <polygon points="252,200 320,140 388,200" fill="#229954"/>
+  <circle cx="320" cy="145" r="5" fill="#f4d03f"/>
+  <text x="320" y="50" text-anchor="middle" font-family="Microsoft YaHei, SimHei, sans-serif" font-size="24" fill="#2c3e50">琅琊亭 - 登高望远</text>
+</svg>

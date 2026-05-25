@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#a4bfef"/>
+      <stop offset="100%" stop-color="#e8f0ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#sky)"/>
+  <ellipse cx="320" cy="310" rx="260" ry="35" fill="#7cb87c" opacity="0.5"/>
+  <rect x="260" y="195" width="120" height="65" fill="#7f8c8d" rx="3"/>
+  <rect x="253" y="250" width="134" height="13" fill="#616a6b"/>
+  <rect x="278" y="205" width="7" height="55" fill="#515a5a"/>
+  <rect x="355" y="205" width="7" height="55" fill="#515a5a"/>
+  <polygon points="235,195 320,125 405,195" fill="#515a5a"/>
+  <polygon points="245,195 320,135 395,195" fill="#616a6b"/>
+  <rect x="302" y="218" width="36" height="42" fill="#424949" rx="3"/>
+  <text x="320" y="55" text-anchor="middle" font-family="Microsoft YaHei, SimHei, sans-serif" font-size="26" fill="#2c3e50">滁州亭城 - 亭子导览</text>
+</svg>

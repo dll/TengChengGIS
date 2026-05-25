@@ -1,0 +1,2441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>滁州亭城GIS - 智能导览</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.115/Build/Cesium/Widgets/widgets.css" />
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            margin: 0; padding: 0; overflow: hidden; height: 100vh;
+            background: #1a1a2e;
+        }
+        /* top bar */
+        #topbar {
+            height: 44px; background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%);
+            display: flex; align-items: center; padding: 0 12px;
+            color: #e0e0e0; font-size: 14px; z-index: 2000; position: relative;
+            box-shadow: 0 1px 3px rgba(0,0,0,.4);
+        }
+        #topbar h1 { font-size: 16px; margin: 0 16px 0 0; font-weight: 400; letter-spacing: 2px; color: #a4bfef; }
+        #topbar .sep { flex: 1; }
+        #topbar button, #topbar .btn-sm {
+            padding: 4px 10px; font-size: 12px; margin-left: 4px;
+            background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+            color: #ccc; border-radius: 3px; cursor: pointer;
+        }
+        #topbar button:hover { background: rgba(255,255,255,.18); color: #fff; }
+        #topbar select { font-size: 12px; padding: 3px 6px; margin-left: 4px; background: rgba(255,255,255,.08); color: #ccc; border: 1px solid rgba(255,255,255,.15); border-radius: 3px; }
+        #topbar select option { color: #000; }
+        /* map area */
+        #mapwrap { position: absolute; top: 44px; left: 0; right: 0; bottom: 0; }
+        #leafletContainer, #cesiumContainer { width: 100%; height: 100%; }
+        #cesiumContainer { display: none; }
+        /* floating panels */
+        .float-panel {
+            position: absolute; z-index: 1500; background: rgba(30,30,50,.92);
+            border: 1px solid rgba(255,255,255,.12); border-radius: 4px;
+            color: #d0d0d0; font-size: 12px; backdrop-filter: blur(8px);
+            box-shadow: 0 2px 12px rgba(0,0,0,.5);
+        }
+        #ctrlPanel { top: 8px; left: 8px; width: 210px; padding: 8px; }
+        #infoPanel { top: 8px; right: 8px; width: 260px; max-height: calc(100vh - 100px); overflow-y: auto; padding: 8px; display: none; }
+        #infoPanel.visible { display: block; }
+        .panel-section { margin-bottom: 6px; }
+        .panel-section h6 {
+            font-size: 11px; color: #8ab4f8; margin: 0 0 4px 0; padding-bottom: 2px;
+            border-bottom: 1px solid rgba(255,255,255,.1); text-transform: uppercase; letter-spacing: 1px;
+            cursor: pointer; user-select: none;
+        }
+        .panel-section h6 .arrow { float: right; transition: transform .2s; }
+        .panel-section.collapsed .section-body { display: none; }
+        .panel-section.collapsed h6 .arrow { transform: rotate(-90deg); }
+        .ctrl-row { display: flex; align-items: center; gap: 4px; margin: 2px 0; }
+        .ctrl-row label { margin: 0; cursor: pointer; font-size: 11px; flex: 1; user-select: none; }
+        .ctrl-row input[type=checkbox] { margin: 0; cursor: pointer; }
+        #zoomLabel { background: rgba(255,255,255,.1); padding: 2px 8px; border-radius: 3px; font-weight: bold; min-width: 28px; text-align: center; }
+        /* mode color dots */
+        .mode-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; position: relative; top: -1px; }
+        /* pavilion info card */
+        #pavDetail { font-size: 11px; }
+        #pavDetail .card-title { font-size: 14px; margin: 0 0 4px; }
+        #selList { font-size: 11px; }
+        #selList .sel-item { padding: 3px 6px; background: rgba(255,255,255,.05); border-radius: 3px; margin: 2px 0; display: flex; justify-content: space-between; }
+        #selList .sel-item .rm { cursor: pointer; color: #e74c3c; font-weight: bold; }
+        .legend-row { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+        .legend-row i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+        /* toast */
+        #toastBox { position: fixed; top: 52px; right: 12px; z-index: 3000; pointer-events: none; }
+        #toastBox .toast-msg {
+            background: rgba(30,30,50,.92); color: #d0d0d0; padding: 8px 14px;
+            border-radius: 4px; margin-bottom: 4px; font-size: 12px; pointer-events: auto;
+            border-left: 3px solid #4a86e8; animation: fadeIn .3s;
+        }
+        @keyframes fadeIn { from {opacity:0; transform:translateY(-8px);} to {opacity:1; transform:translateY(0);} }
+        @keyframes tspPulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.8);opacity:.6} }
+        /* marker */
+        .pav-marker { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: bold; font-size: 11px; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+        .pav-marker.h { background: #e74c3c; }
+        .pav-marker.m { background: #3498db; }
+        .pav-marker.c { background: #2ecc71; }
+        /* modal dark */
+        .modal-content { background: #1e1e32; color: #ccc; border: 1px solid rgba(255,255,255,.1); }
+        .modal-header { border-bottom: 1px solid rgba(255,255,255,.1); }
+        .modal-footer { border-top: 1px solid rgba(255,255,255,.1); }
+        /* tabs */
+        #tabBar { display: flex; gap: 2px; margin: 0 8px; }
+        #tabBar .tab-btn {
+            padding: 5px 14px; font-size: 12px; cursor: pointer; border-radius: 3px 3px 0 0;
+            background: rgba(255,255,255,.05); color: #aaa; border: 1px solid transparent;
+            transition: .2s;
+        }
+        #tabBar .tab-btn:hover { background: rgba(255,255,255,.1); color: #ddd; }
+        #tabBar .tab-btn.active { background: rgba(74,134,232,.25); color: #a4bfef; border-color: rgba(74,134,232,.4); font-weight: bold; }
+        /* data view */
+        #dataView { position: absolute; top: 44px; left: 0; right: 0; bottom: 0; background: #1a1a2e; display: none; flex-direction: column; z-index: 1000; }
+        #dataView.show { display: flex; }
+        #dataToolbar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; background: rgba(0,0,0,.25); border-bottom: 1px solid rgba(255,255,255,.08); flex-shrink: 0; flex-wrap: wrap; }
+        #dataToolbar input { font-size: 12px; padding: 4px 10px; background: rgba(255,255,255,.08); color: #ccc; border: 1px solid rgba(255,255,255,.15); border-radius: 3px; width: 220px; }
+        #dataToolbar input::placeholder { color: #666; }
+        #dataToolbar .info { font-size: 11px; color: #888; }
+        #dataTableWrap { flex: 1; overflow: auto; padding: 0 12px 12px; }
+        #dataTable { width: 100%; border-collapse: collapse; font-size: 12px; color: #ccc; }
+        #dataTable thead { position: sticky; top: 0; z-index: 10; }
+        #dataTable thead th {
+            background: #1a1a2e; padding: 8px 10px; text-align: left; font-weight: 600;
+            border-bottom: 2px solid rgba(255,255,255,.15); color: #a4bfef; font-size: 11px;
+            white-space: nowrap; cursor: pointer; user-select: none; position: relative;
+        }
+        #dataTable thead th:hover { color: #fff; }
+        #dataTable thead th .sort-arrow { margin-left: 3px; opacity: .3; }
+        #dataTable thead th.sorted .sort-arrow { opacity: 1; }
+        #dataTable tbody td {
+            padding: 6px 10px; border-bottom: 1px solid rgba(255,255,255,.05);
+            max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        #dataTable tbody tr { cursor: pointer; transition: background .15s; }
+        #dataTable tbody tr:hover { background: rgba(255,255,255,.06); }
+        #dataTable tbody tr.active-row { background: rgba(74,134,232,.2); outline: 1px solid rgba(74,134,232,.35); }
+        #dataTable tbody tr.sel-row { background: rgba(46,204,113,.15); }
+        #scenicTable tbody tr, #adminTable tbody tr { cursor: pointer; transition: background .15s; }
+        #scenicTable tbody tr:hover, #adminTable tbody tr:hover { background: rgba(255,255,255,.06); }
+        #scenicTable tbody tr.row-sel, #adminTable tbody tr.row-sel { background: rgba(46,204,113,.15); outline: 1px solid rgba(46,204,113,.25); }
+        .col-id { width: 50px; }
+        .col-name { min-width: 110px; }
+        .col-struct { width: 60px; }
+        .col-style { min-width: 120px; }
+        .col-loc { min-width: 140px; }
+        .col-street { width: 100px; }
+        .col-area { width: 70px; }
+        .col-rating { width: 60px; text-align: center; }
+        .col-type { width: 90px; }
+        .type-badge {
+            display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 10px;
+            font-weight: bold;
+        }
+        .type-badge.h { background: rgba(231,76,60,.25); color: #e74c3c; }
+        .type-badge.m { background: rgba(52,152,219,.25); color: #3498db; }
+        .type-badge.c { background: rgba(46,204,113,.25); color: #2ecc71; }
+        .col-collector { width: 56px; text-align: center; }
+        .collector-badge {
+            display: inline-block; padding: 1px 7px; border-radius: 8px;
+            font-size: 10px; background: rgba(155,89,182,.2); color: #9b59b6;
+            cursor: pointer; transition: background .15s; white-space: nowrap;
+        }
+        .collector-badge:hover { background: rgba(155,89,182,.4); }
+        /* stats dashboard */
+        #statsDashboard { flex-shrink: 0; padding: 10px 14px; background: rgba(0,0,0,.12); border-bottom: 1px solid rgba(255,255,255,.06); }
+        #statsOverview { display: flex; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+        .stat-card {
+            background: rgba(255,255,255,.05); border-radius: 5px;
+            padding: 8px 14px; min-width: 90px; text-align: center;
+        }
+        .stat-card .stat-num { font-size: 20px; font-weight: bold; color: #4a86e8; }
+        .stat-card .stat-label { font-size: 10px; color: #888; margin-top: 1px; }
+        #statsCharts { display: flex; gap: 12px; flex-wrap: wrap; }
+        .stat-chart {
+            flex: 1; min-width: 180px; max-width: 280px;
+            background: rgba(255,255,255,.03); border-radius: 5px; padding: 8px 10px;
+        }
+        .stat-chart h6 { font-size: 11px; color: #8ab4f8; margin: 0 0 6px 0; }
+        .stat-bar-row { display: flex; align-items: center; margin: 2px 0; font-size: 10px; }
+        .stat-bar-row .bar-label { width: 50px; text-align: right; margin-right: 5px; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .stat-bar-row .bar-track { flex: 1; height: 10px; background: rgba(255,255,255,.05); border-radius: 2px; overflow: hidden; }
+        .stat-bar-row .bar-fill { height: 100%; background: linear-gradient(90deg, #4a86e8, #6fa3ef); border-radius: 2px; transition: width .3s; }
+        .stat-bar-row .bar-cnt { width: 26px; text-align: right; color: #888; margin-left: 3px; font-size: 9px; }
+        .stat-toggle { font-size: 9px; color: #4a86e8; cursor: pointer; display: inline-block; margin-top: 2px; }
+        /* polygon layers */
+        .scenic-fill { fill: #27ae60; fill-opacity: 0.25; stroke: #27ae60; stroke-width: 2; }
+        .admin-fill { fill: #8e44ad; fill-opacity: 0.2; stroke: #8e44ad; stroke-width: 2; stroke-dasharray: 4,3; }
+        /* tree table */
+        .tree-indent { display: inline-block; width: 16px; }
+        .tree-toggle { cursor: pointer; color: #8ab4f8; margin-right: 3px; user-select: none; }
+        .tree-row-child { background: rgba(255,255,255,.02); }
+        .col-level { width: 70px; }
+        .level-badge {
+            display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 10px; font-weight: bold;
+        }
+        .level-badge.CITY { background: rgba(231,76,60,.25); color: #e74c3c; }
+        .level-badge.DISTRICT { background: rgba(52,152,219,.25); color: #3498db; }
+        .level-badge.STREET { background: rgba(46,204,113,.25); color: #2ecc71; }
+        .level-badge.COUNTY { background: rgba(243,156,18,.25); color: #f39c12; }
+        .level-badge.TOWN { background: rgba(155,89,182,.25); color: #9b59b6; }
+
+        /* TSP Animation Control Panel */
+        #tspCtrl {
+            position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+            background: rgba(20,20,32,.96); color: #ddd; padding: 10px 16px;
+            border-radius: 8px; box-shadow: 0 4px 18px rgba(0,0,0,.5);
+            display: none; z-index: 2500; min-width: 480px;
+            border: 1px solid rgba(255,152,0,.4);
+        }
+        #tspCtrl.show { display: block; }
+        #tspCtrl .tspc-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+        #tspCtrl .tspc-stat { font-size: 11px; color: #aaa; }
+        #tspCtrl .tspc-stat b { color: #ff9800; }
+        #tspCtrl .tspc-progress { flex: 1; height: 6px; background: rgba(255,255,255,.08); border-radius: 3px; cursor: pointer; position: relative; overflow: hidden; }
+        #tspCtrl .tspc-fill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg,#ff9800,#ffc107); width: 0%; transition: width .1s linear; }
+        #tspCtrl button {
+            background: rgba(255,255,255,.08); color: #ccc; border: 1px solid rgba(255,255,255,.15);
+            padding: 3px 10px; font-size: 11px; border-radius: 3px; cursor: pointer;
+        }
+        #tspCtrl button:hover { background: rgba(255,255,255,.15); color: #fff; }
+        #tspCtrl button.primary { background: rgba(255,152,0,.25); color: #ff9800; border-color: rgba(255,152,0,.4); }
+        #tspCtrl select { background: rgba(255,255,255,.08); color: #ccc; border: 1px solid rgba(255,255,255,.15); padding: 2px 6px; font-size: 11px; border-radius: 3px; }
+
+        /* TSP setup modal */
+        .tsp-mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .tsp-mode-grid label {
+            cursor: pointer; padding: 6px 10px; background: rgba(255,255,255,.05);
+            border-radius: 4px; border: 1px solid transparent; font-size: 11px;
+        }
+        .tsp-mode-grid input:checked + label,
+        .tsp-mode-grid label.checked { border-color: #ff9800; background: rgba(255,152,0,.15); }
+    </style>
+</head>
+<body>
+<div id="topbar">
+    <h1>滁州亭城GIS</h1>
+    <button onclick="resetView()" title="复位视图">复位</button>
+    <button onclick="zoomIn()">+</button>
+    <button onclick="zoomOut()">-</button>
+    <span id="zoomLabel">13</span>
+    <span class="sep"></span>
+    <select id="mapProvSel">
+        <option value="gaode">高德</option>
+        <option value="tencent">腾讯</option>
+        <option value="osm">OSM</option>
+    </select>
+    <button id="toggleViewBtn" onclick="toggleView()">3D</button>
+    <button onclick="loadPavilions()">加载数据</button>
+    <span class="sep"></span>
+    <span id="tabBar">
+        <span class="tab-btn active" onclick="switchTab('map')">地图</span>
+        <span class="tab-btn" onclick="switchTab('pavilion')">亭子</span>
+        <span class="tab-btn" onclick="switchTab('scenic')">景区</span>
+        <span class="tab-btn" onclick="switchTab('admin')">区划</span>
+    </span>
+</div>
+
+<div id="dataView">
+    <div id="dataToolbar">
+        <input type="text" id="tblSearch" placeholder="搜索名称/位置/结构..." oninput="filterTable()">
+        <span class="info">共 <b id="tblTotal">0</b> 条</span>
+        <span class="info">已选 <b id="tblSelCnt">0</b> 条</span>
+        <span class="sep" style="flex:1"></span>
+        <button onclick="exportTableCSV()" title="导出CSV">导出CSV</button>
+        <button onclick="tblClearSel()" title="清空选择">清空选择</button>
+        <button onclick="document.getElementById('statsDashboard').style.display=document.getElementById('statsDashboard').style.display==='none'?'':'none'" title="显示/隐藏统计" style="font-size:11px">统计</button>
+    </div>
+    <div id="statsDashboard" style="display:none">
+        <div id="statsOverview"></div>
+        <div id="statsCharts">
+            <div id="chartStructure" class="stat-chart"><h6>结构分布</h6></div>
+            <div id="chartTopStyle" class="stat-chart"><h6>风格/平立面分布</h6></div>
+            <div id="chartType" class="stat-chart"><h6>类型分布</h6></div>
+            <div id="chartStreet" class="stat-chart"><h6>街道分布</h6></div>
+        </div>
+    </div>
+    <div id="dataTableWrap">
+        <table id="dataTable">
+            <thead>
+                <tr>
+                    <th class="col-id" onclick="tblSort('id')">ID <span class="sort-arrow">↕</span></th>
+                    <th class="col-name" onclick="tblSort('chineseName')">名称 <span class="sort-arrow">↕</span></th>
+                    <th class="col-struct" onclick="tblSort('structure')">结构 <span class="sort-arrow">↕</span></th>
+                    <th class="col-style" onclick="tblSort('topStyle')">风格(平立面) <span class="sort-arrow">↕</span></th>
+                    <th class="col-loc" onclick="tblSort('locationDesc')">位置 <span class="sort-arrow">↕</span></th>
+                    <th class="col-street" onclick="tblSort('street')">街道 <span class="sort-arrow">↕</span></th>
+                    <th class="col-area" onclick="tblSort('areaSize')">面积(m²) <span class="sort-arrow">↕</span></th>
+                    <th class="col-rating" onclick="tblSort('visitorRating')">评分 <span class="sort-arrow">↕</span></th>
+                    <th class="col-type" onclick="tblSort('type')">类型 <span class="sort-arrow">↕</span></th>
+                    <th class="col-collector" onclick="tblSort('collectorCount')">采集 <span class="sort-arrow">↕</span></th>
+                </tr>
+            </thead>
+            <tbody id="tblBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="scenicDataView">
+    <div id="scenicToolbar">
+        <input type="text" id="scenicSearch" placeholder="搜索景区名称/类型/地址..." oninput="filterScenicTable()">
+        <span class="info">共 <b id="scenicTotal">0</b> 条</span>
+        <span class="sep" style="flex:1"></span>
+        <button onclick="openScenicModal()" title="添加景区" style="background:#27ae60;color:#fff">+添加</button>
+        <button onclick="editCurScenic()" title="编辑选中" disabled id="scenicEditBtn">编辑</button>
+        <button onclick="delCurScenic()" title="删除选中" disabled id="scenicDelBtn">删除</button>
+        <span class="sep"></span>
+        <button onclick="exportScenicCSV()" title="导出CSV">导出CSV</button>
+        <button onclick="document.getElementById('scenicStatsDash').style.display=document.getElementById('scenicStatsDash').style.display==='none'?'':'none'" title="显示/隐藏统计" style="font-size:11px">统计</button>
+    </div>
+    <div id="scenicStatsDash" style="display:none">
+        <div id="scenicStatsOverview"></div>
+        <div id="scenicStatsCharts">
+            <div id="scenicChartType" class="stat-chart"><h6>景区类型分布</h6></div>
+        </div>
+    </div>
+    <div id="scenicTableWrap">
+        <table id="scenicTable">
+            <thead>
+                <tr>
+                    <th class="col-id">ID</th>
+                    <th class="col-name">名称</th>
+                    <th class="col-type">类型</th>
+                    <th class="col-area">面积(km²)</th>
+                    <th class="col-loc">地址</th>
+                    <th class="col-rating">评分</th>
+                    <th class="col-collector">采集</th>
+                </tr>
+            </thead>
+            <tbody id="scenicTblBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="adminDataView">
+    <div id="adminToolbar">
+        <input type="text" id="adminSearch" placeholder="搜索区划名称/级别..." oninput="filterAdminTable()">
+        <span class="info">共 <b id="adminTotal">0</b> 条</span>
+        <span class="sep" style="flex:1"></span>
+        <button onclick="openAdminModal()" title="添加区划" style="background:#e74c3c;color:#fff">+添加</button>
+        <button onclick="editCurAdmin()" title="编辑选中" disabled id="adminEditBtn">编辑</button>
+        <button onclick="delCurAdmin()" title="删除选中" disabled id="adminDelBtn">删除</button>
+        <span class="sep"></span>
+        <button onclick="toggleAdminTree()" title="树形/列表切换" style="font-size:11px">树形</button>
+        <button onclick="exportAdminCSV()" title="导出CSV">导出CSV</button>
+        <button onclick="document.getElementById('adminStatsDash').style.display=document.getElementById('adminStatsDash').style.display==='none'?'':'none'" title="显示/隐藏统计" style="font-size:11px">统计</button>
+    </div>
+    <div id="adminStatsDash" style="display:none">
+        <div id="adminStatsOverview"></div>
+        <div id="adminStatsCharts">
+            <div id="adminChartLevel" class="stat-chart"><h6>层级分布</h6></div>
+        </div>
+    </div>
+    <div id="adminTableWrap">
+        <table id="adminTable">
+            <thead>
+                <tr>
+                    <th class="col-name">名称</th>
+                    <th class="col-level">级别</th>
+                    <th class="col-loc">上级区划</th>
+                    <th class="col-area">面积(km²)</th>
+                    <th class="col-rating">人口</th>
+                    <th class="col-id">区划代码</th>
+                    <th class="col-collector">采集</th>
+                </tr>
+            </thead>
+            <tbody id="adminTblBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div id="mapwrap">
+    <div id="leafletContainer"></div>
+    <div id="cesiumContainer"></div>
+
+    <!-- left control panel -->
+    <div class="float-panel" id="ctrlPanel">
+        <div class="panel-section" id="secTraffic">
+            <h6 onclick="toggleSection('secTraffic')">交通方式 <span class="arrow">▼</span></h6>
+            <div class="section-body">
+                <div class="ctrl-row"><span class="mode-dot" style="background:#3498db"></span><input type="checkbox" id="chkBus" checked onchange="toggleMode('bus')"><label for="chkBus">公交</label></div>
+                <div class="ctrl-row"><span class="mode-dot" style="background:#f39c12"></span><input type="checkbox" id="chkTaxi" checked onchange="toggleMode('taxi')"><label for="chkTaxi">出租车</label></div>
+                <div class="ctrl-row"><span class="mode-dot" style="background:#2ecc71"></span><input type="checkbox" id="chkEBike" checked onchange="toggleMode('ebike')"><label for="chkEBike">电动车</label></div>
+                <div class="ctrl-row"><span class="mode-dot" style="background:#e67e22"></span><input type="checkbox" id="chkBicycle" checked onchange="toggleMode('bicycle')"><label for="chkBicycle">自行车</label></div>
+                <div class="ctrl-row"><span class="mode-dot" style="background:#e74c3c"></span><input type="checkbox" id="chkWalking" checked onchange="toggleMode('walking')"><label for="chkWalking">步行</label></div>
+            </div>
+        </div>
+        <div class="panel-section" id="secLayers">
+            <h6 onclick="toggleSection('secLayers')">图层 <span class="arrow">▼</span></h6>
+            <div class="section-body">
+                <div class="ctrl-row"><input type="checkbox" id="chkTraffic" onchange="toggleTraffic()"><label for="chkTraffic">实时路况</label></div>
+                <div class="ctrl-row"><input type="checkbox" id="chkPavilion" checked onchange="togglePavLayer()"><label for="chkPavilion">亭子</label></div>
+                <div class="ctrl-row"><input type="checkbox" id="chkScenic" checked onchange="toggleScenicLayer()"><label for="chkScenic">景区</label></div>
+                <div class="ctrl-row"><input type="checkbox" id="chkAdmin" checked onchange="toggleAdminLayer()"><label for="chkAdmin">区划</label></div>
+                <div class="ctrl-row"><input type="checkbox" id="chkAttraction" checked onchange="toggleAttrLayer()"><label for="chkAttraction">景点路径</label></div>
+            </div>
+        </div>
+        <div class="panel-section" id="secActions">
+            <h6 onclick="toggleSection('secActions')">操作 <span class="arrow">▼</span></h6>
+            <div class="section-body">
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="initRoutes()">初始化交通线</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#2ecc71;font-size:11px;" onclick="buildMultiModal()">多模式路网</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="loadTransportRoutes()">刷新交通线</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#3498db;font-size:11px;" onclick="correctCoordinates()">坐标纠偏</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="clearPath()">清除路径</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="showBestPath()">最优路径</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="showImportDialog()">导入数据</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="dlExport('geojson')">导出GeoJSON</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="dlExport('excel')">导出Excel</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="dlExport('csv')">导出CSV</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="dlTemplate('excel')">Excel模板</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="dlTemplate('csv')">CSV模板</button>
+            </div>
+        </div>
+        <div class="panel-section" id="secNav">
+            <h6 onclick="toggleSection('secNav')">导航播报 <span class="arrow">▼</span></h6>
+            <div class="section-body">
+                <div class="ctrl-row"><input type="checkbox" id="chkPointGuide"><label for="chkPointGuide">点状播报</label></div>
+                <div class="ctrl-row"><input type="checkbox" id="chkLineGuide"><label for="chkLineGuide">线状播报</label></div>
+                <button class="btn btn-sm btn-success w-100 mb-1" style="font-size:11px;" onclick="startNav()">开始导航</button>
+                <button class="btn btn-sm btn-danger w-100" style="font-size:11px;" onclick="stopNav()">停止</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- right info panel -->
+    <div class="float-panel visible" id="infoPanel">
+        <div class="panel-section" id="secInfo">
+            <h6 onclick="toggleSection('secInfo')">亭子详情 <span class="arrow">▼</span></h6>
+            <div class="section-body" id="pavDetail"><p style="color:#888;">点击地图上的亭子查看</p></div>
+        </div>
+        <div class="panel-section" id="secSel">
+            <h6 onclick="toggleSection('secSel')">已选择 <span class="arrow">▼</span></h6>
+            <div class="section-body" id="selList"><p style="color:#888;">暂未选择</p></div>
+        </div>
+        <div class="panel-section" id="secLegend">
+            <h6 onclick="toggleSection('secLegend')">图例 <span class="arrow">▼</span></h6>
+            <div class="section-body">
+                <div class="legend-row"><i style="background:#e74c3c"></i> 历史文化亭</div>
+                <div class="legend-row"><i style="background:#3498db"></i> 现代景观亭</div>
+                <div class="legend-row"><i style="background:#2ecc71"></i> 文化主题亭</div>
+            </div>
+        </div>
+        <div class="panel-section" id="secSmart">
+            <h6 onclick="toggleSection('secSmart')">智能功能 <span class="arrow">▼</span></h6>
+            <div class="section-body">
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="traverseAll()">遍历千亭</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="tourismSvc()">旅游服务</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="smartTour()">智能规划</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="showWeather()">天气</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="nearbyFac()">附近设施</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="shareRoute()">分享路线</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ff9800;font-size:11px;" onclick="openTspSetup()">TSP路线动画</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="stopTspAnimation()">停止动画</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#9b59b6;font-size:11px;" onclick="openSavedPlans()">已存方案</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="addPavilion()">添加亭子</button>
+                <button class="btn btn-sm w-100 mb-1" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="editCurPavilion()">编辑选中</button>
+                <button class="btn btn-sm w-100" style="background:rgba(255,255,255,.08);color:#ccc;font-size:11px;" onclick="delCurPavilion()">删除选中</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- pavilion modal -->
+<div class="modal fade" id="pavModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title" id="pavModalTitle">添加亭子</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <form id="pavForm">
+                    <div class="mb-2"><label class="form-label" style="font-size:11px;">中文名称</label><input type="text" class="form-control form-control-sm" id="fName" required></div>
+                    <div class="mb-2"><label class="form-label" style="font-size:11px;">英文名称</label><input type="text" class="form-control form-control-sm" id="fEName"></div>
+                    <div class="mb-2"><label class="form-label" style="font-size:11px;">类型</label><select class="form-select form-select-sm" id="fType"><option value="历史文化亭">历史文化亭</option><option value="现代景观亭">现代景观亭</option><option value="文化主题亭">文化主题亭</option></select></div>
+                    <div class="mb-2"><label class="form-label" style="font-size:11px;">建造年份</label><input type="number" class="form-control form-control-sm" id="fYear"></div>
+                    <div class="row"><div class="col"><label class="form-label" style="font-size:11px;">经度</label><input type="number" step="0.000001" class="form-control form-control-sm" id="fLng" required></div><div class="col"><label class="form-label" style="font-size:11px;">纬度</label><input type="number" step="0.000001" class="form-control form-control-sm" id="fLat" required></div></div>
+                    <div class="mb-2"><label class="form-label" style="font-size:11px;">描述</label><textarea class="form-control form-control-sm" id="fDesc" rows="2"></textarea></div>
+                    <div class="mb-2"><label class="form-label" style="font-size:11px;">建筑风格</label><input type="text" class="form-control form-control-sm" id="fStyle"></div>
+                    <div class="row"><div class="col"><label class="form-label" style="font-size:11px;">评分</label><input type="number" step="0.1" min="0" max="5" class="form-control form-control-sm" id="fRating"></div><div class="col"><label class="form-label" style="font-size:11px;">对外开放</label><select class="form-select form-select-sm" id="fOpen"><option value="true">是</option><option value="false">否</option></select></div></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-sm btn-primary" id="savePavBtn">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- scenic modal -->
+<div class="modal fade" id="scenicModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title" id="scenicModalTitle">添加景区</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body"><form id="scenicForm">
+            <div class="mb-2"><label class="form-label" style="font-size:11px">名称</label><input type="text" class="form-control form-control-sm" id="sfName" required></div>
+            <div class="mb-2"><label class="form-label" style="font-size:11px">类型</label><select class="form-select form-select-sm" id="sfType"><option value="公园">公园</option><option value="动物园">动物园</option><option value="主题公园">主题公园</option><option value="博物馆">博物馆</option><option value="风景区">风景区</option><option value="观景点">观景点</option></select></div>
+            <div class="mb-2"><label class="form-label" style="font-size:11px">描述</label><textarea class="form-control form-control-sm" id="sfDesc" rows="2"></textarea></div>
+            <div class="row"><div class="col"><label class="form-label" style="font-size:11px">经度</label><input type="number" step="0.000001" class="form-control form-control-sm" id="sfLng"></div><div class="col"><label class="form-label" style="font-size:11px">纬度</label><input type="number" step="0.000001" class="form-control form-control-sm" id="sfLat"></div></div>
+            <div class="mb-2"><label class="form-label" style="font-size:11px">地址</label><input type="text" class="form-control form-control-sm" id="sfAddr"></div>
+            <div class="row"><div class="col"><label class="form-label" style="font-size:11px">票价(元)</label><input type="number" step="0.01" class="form-control form-control-sm" id="sfPrice"></div><div class="col"><label class="form-label" style="font-size:11px">评分</label><input type="number" step="0.1" min="0" max="5" class="form-control form-control-sm" id="sfRating"></div></div>
+            <div class="mb-2"><label class="form-label" style="font-size:11px">WKT几何 <small style="color:#888">(POLYGON/MULTIPOLYGON)</small></label><textarea class="form-control form-control-sm" id="sfWkt" rows="3" style="font-family:monospace;font-size:10px"></textarea></div>
+            <div class="form-check"><input type="checkbox" class="form-check-input" id="sfOpen" checked><label class="form-check-label" style="font-size:11px">对外开放</label></div>
+        </form></div>
+        <div class="modal-footer"><button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-sm btn-primary" id="saveScenicBtn">保存</button></div>
+    </div></div>
+</div>
+
+<!-- admin modal -->
+<div class="modal fade" id="adminModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title" id="adminModalTitle">添加区划</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body"><form id="adminForm">
+            <div class="mb-2"><label class="form-label" style="font-size:11px">名称</label><input type="text" class="form-control form-control-sm" id="afName" required></div>
+            <div class="mb-2"><label class="form-label" style="font-size:11px">级别</label><select class="form-select form-select-sm" id="afLevel"><option value="CITY">市</option><option value="DISTRICT">区/县</option><option value="COUNTY">县</option><option value="STREET">街道</option><option value="TOWN">镇</option></select></div>
+            <div class="mb-2"><label class="form-label" style="font-size:11px">上级区划ID</label><input type="number" class="form-control form-control-sm" id="afParentId"><small style="color:#888">留空为顶级</small></div>
+            <div class="mb-2"><label class="form-label" style="font-size:11px">区划代码</label><input type="text" class="form-control form-control-sm" id="afCode"></div>
+            <div class="row"><div class="col"><label class="form-label" style="font-size:11px">面积(km²)</label><input type="number" step="0.01" class="form-control form-control-sm" id="afArea"></div><div class="col"><label class="form-label" style="font-size:11px">人口</label><input type="number" class="form-control form-control-sm" id="afPop"></div></div>
+            <div class="mb-2"><label class="form-label" style="font-size:11px">WKT几何 <small style="color:#888">(POLYGON)</small></label><textarea class="form-control form-control-sm" id="afWkt" rows="3" style="font-family:monospace;font-size:10px"></textarea></div>
+            <div class="mb-2"><label class="form-label" style="font-size:11px">备注</label><input type="text" class="form-control form-control-sm" id="afNotes"></div>
+        </form></div>
+        <div class="modal-footer"><button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-sm btn-primary" id="saveAdminBtn">保存</button></div>
+    </div></div>
+</div>
+
+<div id="toastBox"></div>
+
+<!-- TSP control panel -->
+<div id="tspCtrl">
+    <div class="tspc-row">
+        <span class="tspc-stat" id="tspcInfo">TSP路线</span>
+        <span class="tspc-stat" style="margin-left:auto" id="tspcCounter">0/0</span>
+    </div>
+    <div class="tspc-row">
+        <span class="tspc-stat" style="min-width:36px">进度</span>
+        <div class="tspc-progress" id="tspcBar"><div class="tspc-fill" id="tspcFill"></div></div>
+        <span class="tspc-stat" id="tspcPct">0%</span>
+    </div>
+    <div class="tspc-row">
+        <button class="primary" id="tspcPlay">▶ 播放</button>
+        <button id="tspcReset">⟲ 重置</button>
+        <span class="tspc-stat">速度</span>
+        <select id="tspcSpeed">
+            <option value="0.5">0.5x</option>
+            <option value="1" selected>1x</option>
+            <option value="2">2x</option>
+            <option value="5">5x</option>
+            <option value="10">10x</option>
+        </select>
+        <button id="tspcSave">💾 保存方案</button>
+        <button id="tspcClose" style="margin-left:auto">✕ 关闭</button>
+    </div>
+</div>
+
+<!-- TSP setup modal -->
+<div class="modal fade" id="tspSetupModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">TSP路线规划</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-2">
+                    <div style="font-size:11px;color:#aaa;margin-bottom:4px">选择交通方式</div>
+                    <div class="tsp-mode-grid" id="tspModeGrid">
+                        <label><input type="radio" name="tspMode" value="WALKING" checked hidden> 步行 (5km/h)</label>
+                        <label><input type="radio" name="tspMode" value="BICYCLE" hidden> 自行车 (12km/h)</label>
+                        <label><input type="radio" name="tspMode" value="E_BIKE" hidden> 电瓶车 (15km/h)</label>
+                        <label><input type="radio" name="tspMode" value="BUS" hidden> 公交 (30km/h)</label>
+                        <label><input type="radio" name="tspMode" value="TAXI" hidden> 出租车 (40km/h)</label>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <div style="font-size:11px;color:#aaa;margin-bottom:4px">优化目标</div>
+                    <div class="tsp-mode-grid" id="tspObjGrid">
+                        <label><input type="radio" name="tspObj" value="distance" checked hidden> 距离最短</label>
+                        <label><input type="radio" name="tspObj" value="time" hidden> 时间最短</label>
+                        <label><input type="radio" name="tspObj" value="cost" hidden> 费用最低</label>
+                    </div>
+                </div>
+                <div class="mb-2"><label class="form-label" style="font-size:11px">范围</label>
+                    <select class="form-select form-select-sm" id="tspScope">
+                        <option value="selected">仅选中亭子</option>
+                        <option value="all">全部千亭</option>
+                    </select>
+                </div>
+                <div id="tspScopeInfo" style="font-size:11px;color:#888"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-sm btn-primary" id="tspStartBtn">开始规划</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- saved plans modal -->
+<div class="modal fade" id="plansModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">已保存的路线方案</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body" id="plansList" style="max-height:60vh;overflow:auto;font-size:11px">加载中...</div>
+            <div class="modal-footer"><button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">关闭</button></div>
+        </div>
+    </div>
+</div>
+
+<!-- import modal -->
+<div class="modal fade" id="impModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">导入亭子数据</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <p style="font-size:11px;color:#aaa;">支持 Excel (.xlsx)、GeoJSON (.geojson)、CSV (.csv)。<br>Excel 列: 序号,名称,结构,x,y,位置,所在街道/小区,大致面积m²,风格平立面,备注</p>
+                <div class="mb-2"><label class="form-label" style="font-size:11px;">选择文件</label><input type="file" class="form-control form-control-sm" id="impFile" accept=".xlsx,.xls,.geojson,.json,.csv"></div>
+                <div id="impProgress" style="display:none;"><div class="progress" style="height:4px;background:rgba(255,255,255,.1);"><div class="progress-bar" style="width:100%;background:#4a86e8;"></div></div><small style="color:#888;">正在导入...</small></div>
+                <div id="impResult" style="display:none;margin-top:8px;font-size:11px;"></div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-sm btn-primary" id="startImportBtn">开始导入</button></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.115/Build/Cesium/Cesium.js"></script>
+<script>
+(function(){
+
+    let lmap, viewer, is3D = false;
+    let pavs = [], sel = [];
+    let markers = {}, csMarkers = {};
+    let pathLyr = null, csPath = null;
+    let tileLyr = null, mapProv = 'gaode', trafficLyr = null;
+    let busLyr = null, taxiLyr = null, ebikeLyr = null, bikeLyr = null, walkLyr = null;
+    let csRoutes = [];
+    let pavModal = null, impModal = null, editTarget = null;
+    let navActive = false, navIdx = 0;
+    let scenicAreas = [], adminDivisions = [];
+    let scenicPolyLyr = null, adminPolyLyr = null;
+    let adminTreeMode = false;
+
+    const TYPE_LAB = { HISTORICAL: '历史文化亭', MODERN: '现代景观亭', CULTURAL: '文化主题亭' };
+    const TYPE_STYLE = {
+        MODERN:  { color:'#3498db', cls:'m', cesium: 'BLUE' },
+        CULTURAL:{ color:'#2ecc71', cls:'c', cesium: 'GREEN' },
+        DEFAULT: { color:'#e74c3c', cls:'h', cesium: 'RED' }
+    };
+    function tLabel(t) { return TYPE_LAB[t] || t || '未知'; }
+    function tStyle(t) { return TYPE_STYLE[t] || TYPE_STYLE.DEFAULT; }
+
+
+    function gcj02(lng, lat) {
+        const PI = Math.PI, a = 6378245, ee = 0.00669342162296594323;
+        function tLat(x, y) {
+            let r = -100 + 2*x + 3*y + 0.2*y*y + 0.1*x*y + 0.2*Math.sqrt(Math.abs(x));
+            r += (20*Math.sin(6*x*PI) + 20*Math.sin(2*x*PI))*2/3;
+            r += (20*Math.sin(y*PI) + 40*Math.sin(y/3*PI))*2/3;
+            r += (160*Math.sin(y/12*PI) + 320*Math.sin(y*PI/30))*2/3;
+            return r;
+        }
+        function tLng(x, y) {
+            let r = 300 + x + 2*y + 0.1*x*x + 0.1*x*y + 0.1*Math.sqrt(Math.abs(x));
+            r += (20*Math.sin(6*x*PI) + 20*Math.sin(2*x*PI))*2/3;
+            r += (20*Math.sin(x*PI) + 40*Math.sin(x/3*PI))*2/3;
+            r += (150*Math.sin(x/12*PI) + 300*Math.sin(x/30*PI))*2/3;
+            return r;
+        }
+        const dLat = tLat(lng-105, lat-35), dLng = tLng(lng-105, lat-35);
+        const rad = lat/180*PI;
+        let m = Math.sin(rad); m = 1 - ee*m*m;
+        const s = Math.sqrt(m);
+        return [lng + (dLng*180)/(a/s*Math.cos(rad)*PI), lat + (dLat*180)/((a*(1-ee))/(m*s)*PI)];
+    }
+
+
+    function tileUrl(p) {
+        const subs = p==='gaode'?['1','2','3','4']:p==='tencent'?['0','1','2','3']:['a','b','c'];
+        const s = subs[Math.floor(Math.random()*subs.length)];
+        if (p==='gaode') return 'https://webrd0'+s+'.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}';
+        if (p==='tencent') return 'https://rt'+s+'.map.gtimg.com/tile?z={z}&x={x}&y={y}&type=vector&styleid=0';
+        return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    }
+    function tileSubs(p) { return p==='gaode'?['1','2','3','4']:p==='tencent'?['0','1','2','3']:['a','b','c']; }
+    function attribution(p) {
+        if (p==='gaode') return '&copy; 高德';
+        if (p==='tencent') return '&copy; 腾讯';
+        return '&copy; OSM';
+    }
+
+    function switchMap(prov) {
+        if (prov===mapProv && tileLyr) return; mapProv = prov;
+        if (tileLyr) lmap.removeLayer(tileLyr);
+        if (prov!=='gaode' && trafficLyr) { lmap.removeLayer(trafficLyr); trafficLyr=null; document.getElementById('chkTraffic').checked=false; }
+        tileLyr = L.tileLayer(tileUrl(prov), { subdomains: tileSubs(prov), attribution: attribution(prov), maxZoom: 18 }).addTo(lmap);
+        if (prov==='gaode'||prov==='tencent') repositionForChinese();
+    }
+
+    function needGcj() { return mapProv==='gaode'||mapProv==='tencent'; }
+    function leafCoord(lng, lat) {
+        if (needGcj()) { var g=gcj02(lng,lat); return [g[1],g[0]]; }
+        return [lat,lng];
+    }
+    /** 优先使用后端预存的 GCJ-02 坐标，避免前端转换误差 */
+    function pavLeafCoord(p) {
+        if (needGcj() && p.longitudeGcj != null && p.latitudeGcj != null) {
+            return [p.latitudeGcj, p.longitudeGcj];
+        }
+        return leafCoord(p.longitude, p.latitude);
+    }
+
+    function repositionForChinese() {
+        var nc = needGcj();
+        for (var k in markers) {
+            var m = markers[k], wgs = m._wgs, p = m._pav;
+            if (!wgs) continue;
+            var c;
+            if (nc && p && p.longitudeGcj != null && p.latitudeGcj != null) {
+                c = [p.longitudeGcj, p.latitudeGcj];
+            } else {
+                c = nc ? gcj02(wgs.lng, wgs.lat) : [wgs.lng, wgs.lat];
+            }
+            m.setLatLng([c[1], c[0]]);
+        }
+        if (pathLyr) {
+            var wgsCoords = pathLyr._wgsCoords || pathLyr.getLatLngs();
+            pathLyr.setLatLngs(wgsCoords.map(function(c){ var g=nc?gcj02(c.lng,c.lat):[c.lng,c.lat]; return [g[1],g[0]]; }));
+        }
+        [busLyr,taxiLyr,ebikeLyr,bikeLyr,walkLyr].forEach(function(lyr){
+            if (!lyr) return;
+            lyr.eachLayer(function(pl){
+                var wgsCoords = pl._wgsCoords || pl.getLatLngs();
+                pl.setLatLngs(wgsCoords.map(function(c){ var g=nc?gcj02(c.lng,c.lat):[c.lng,c.lat]; return [g[1],g[0]]; }));
+            });
+        });
+    }
+
+
+    function initMaps() {
+        lmap = L.map('leafletContainer').setView([32.3123, 118.3178], 13);
+        tileLyr = L.tileLayer(tileUrl('gaode'), { subdomains: tileSubs('gaode'), attribution: attribution('gaode'), maxZoom: 18 }).addTo(lmap);
+
+        viewer = new Cesium.Viewer('cesiumContainer', {
+            imageryProvider: new Cesium.OpenStreetMapImageryProvider({ url: 'https://a.tile.openstreetmap.org/' }),
+            baseLayerPicker: false, geocoder: false, homeButton: false, sceneModePicker: false,
+            navigationHelpButton: false, animation: false, timeline: false, fullscreenButton: false,
+            infoBox: false, selectionIndicator: false
+        });
+        viewer.camera.flyTo({ destination: Cesium.Cartesian3.fromDegrees(118.3178, 32.3123, 10000), duration: 0 });
+
+        lmap.on('zoomend', updateZoom);
+        if (viewer) viewer.camera.changed.addEventListener(updateZoom);
+        setTimeout(loadPavilions, 500);
+    }
+
+    function updateZoom() {
+        var z = is3D && viewer ? Math.max(1, Math.min(20, Math.round(18 - Math.log2(viewer.camera.positionCartographic.height/1000)))) : lmap.getZoom();
+        document.getElementById('zoomLabel').textContent = z;
+    }
+
+
+    function toggleView() {
+        var leafDiv = document.getElementById('leafletContainer'), csDiv = document.getElementById('cesiumContainer'), btn = document.getElementById('toggleViewBtn');
+        if (is3D) {
+            leafDiv.style.display='block'; csDiv.style.display='none'; btn.textContent='3D'; is3D=false;
+        } else {
+            leafDiv.style.display='none'; csDiv.style.display='block'; btn.textContent='2D'; is3D=true;
+            if (pavs.length>0) showOnCesium();
+        }
+    }
+    window.toggleView = toggleView;
+
+
+    function resetView() { if (is3D&&viewer) viewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(118.3178,32.3123,10000),duration:1.5}); else lmap.setView([32.3123,118.3178],13); }
+    function zoomIn() { if (is3D&&viewer) viewer.camera.zoomIn(); else lmap.zoomIn(); updateZoom(); }
+    function zoomOut() { if (is3D&&viewer) viewer.camera.zoomOut(); else lmap.zoomOut(); updateZoom(); }
+    window.resetView = resetView; window.zoomIn = zoomIn; window.zoomOut = zoomOut;
+
+
+    function toggleSection(id) { document.getElementById(id).classList.toggle('collapsed'); }
+    window.toggleSection = toggleSection;
+
+
+    function toast(msg, type) {
+        var box = document.getElementById('toastBox');
+        var colors = { success: '#2ecc71', danger: '#e74c3c', warning: '#f39c12', info: '#4a86e8' };
+        var el = document.createElement('div'); el.className='toast-msg';
+        el.style.borderLeftColor = colors[type]||'#4a86e8'; el.textContent = msg;
+        box.appendChild(el); setTimeout(function(){ el.remove(); }, 4000);
+    }
+
+
+    async function loadPavilions() {
+        try {
+            var resp = await fetch('/thousand-pavilions/locations?includeCollectorCounts=true');
+            pavs = await resp.json();
+
+            for (var k in markers) { if (lmap.hasLayer(markers[k])) lmap.removeLayer(markers[k]); }
+            markers = {};
+            for (var k in csMarkers) { viewer.entities.removeById(k); }
+            csMarkers = {};
+
+            pavs.forEach(function(p) {
+                if (!p.latitude || !p.longitude) return;
+                var st = tStyle(p.type);
+                var icon = L.divIcon({ className: 'pav-marker '+st.cls, html: '<div style="background:'+st.color+';width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:bold;font-size:11px;">'+p.chineseName.charAt(0)+'</div>', iconSize: [22,22], iconAnchor: [11,11] });
+                var leaf = pavLeafCoord(p);
+                var m = L.marker(leaf, {icon: icon})
+                    .bindPopup('<b>'+p.chineseName+'</b><br>'+tLabel(p.type)+'<br>评分:'+(p.visitorRating||'暂无'))
+                    .addTo(lmap);
+                m.on('click', function(e){ showDetail(p); toggleSel(p); });
+                m._wgs = {lat: p.latitude, lng: p.longitude};
+                m._pav = p;
+                markers[p.id] = m;
+
+                var cColor = Cesium.Color[tStyle(p.type).cesium];
+                var ent = viewer.entities.add({
+                    id: p.id.toString(), position: Cesium.Cartesian3.fromDegrees(p.longitude,p.latitude,10),
+                    point: { pixelSize:10, color:cColor, outlineColor:Cesium.Color.WHITE, outlineWidth:2, heightReference:Cesium.HeightReference.CLAMP_TO_GROUND },
+                    label: { text:p.chineseName, font:'14pt monospace', fillColor:Cesium.Color.WHITE, outlineColor:Cesium.Color.BLACK, outlineWidth:2, horizontalOrigin:Cesium.HorizontalOrigin.LEFT, verticalOrigin:Cesium.VerticalOrigin.BOTTOM, eyeOffset:new Cesium.Cartesian3(-20,0,0), heightReference:Cesium.HeightReference.CLAMP_TO_GROUND }
+                });
+                csMarkers[p.id] = ent;
+            });
+
+            toast('加载了 '+pavs.length+' 个亭子', 'success');
+            loadTransportRoutes();
+        } catch(e) { toast('加载失败: '+e.message, 'danger'); }
+    }
+    window.loadPavilions = loadPavilions;
+
+
+    function clearRouteLayers() {
+        [busLyr,taxiLyr,ebikeLyr,bikeLyr,walkLyr].forEach(function(l){ if(l) lmap.removeLayer(l); });
+        busLyr=L.layerGroup(); taxiLyr=L.layerGroup(); ebikeLyr=L.layerGroup(); bikeLyr=L.layerGroup(); walkLyr=L.layerGroup();
+        if (csRoutes) { csRoutes.forEach(function(r){ if(viewer&&viewer.entities) viewer.entities.remove(r); }); csRoutes=[]; }
+    }
+
+    async function loadTransportRoutes() {
+        try {
+            var resp = await fetch('/transport-routes'), result = await resp.json();
+            if (!result.success||!result.data||result.data.length===0) { if (!routesInitializing) initRoutes(); return; }
+            var routes = result.data;
+            clearRouteLayers();
+
+            var colors = { BUS:'#3498db', TAXI:'#f39c12', E_BIKE:'#2ecc71', BICYCLE:'#e67e22', WALKING:'#e74c3c' };
+            var widths = { BUS:5, TAXI:4, E_BIKE:3, BICYCLE:3, WALKING:2 };
+            var icons = { BUS:'[Bus]', TAXI:'[Taxi]', E_BIKE:'[E-Bike]', BICYCLE:'[Bike]', WALKING:'[Walk]' };
+            var lyrMap = { BUS:busLyr, TAXI:taxiLyr, E_BIKE:ebikeLyr, BICYCLE:bikeLyr, WALKING:walkLyr };
+
+            routes.forEach(function(r) {
+                if (!r.fromPavilionId||!r.toPavilionId) return;
+                var fp = pavs.find(function(p){return p.id===r.fromPavilionId});
+                var tp = pavs.find(function(p){return p.id===r.toPavilionId});
+                if (!fp||!tp) return;
+
+                var mode = r.transportMode||'WALKING', c = colors[mode]||'#95a5a6', w = widths[mode]||3;
+                var coords = [], wgsCoords = [];
+                if (r.waypoints) {
+                    try {
+                        coords = JSON.parse(r.waypoints).map(function(wp){wgsCoords.push([wp[1],wp[0]]); return leafCoord(wp[0],wp[1]);});
+                    } catch(e){}
+                }
+                if (coords.length===0) {
+                    wgsCoords = [[fp.latitude, fp.longitude], [tp.latitude, tp.longitude]];
+                    coords = [leafCoord(fp.longitude,fp.latitude), leafCoord(tp.longitude,tp.latitude)];
+                }
+
+                var dash = mode==='WALKING'?'5,8':mode==='BICYCLE'?'8,4':null;
+                var pl = L.polyline(coords, { color:c, weight:w, opacity:0.85, smoothFactor:0.5, dashArray:dash });
+                pl._wgsCoords = wgsCoords;
+                var isLoop = r.fromPavilionId===r.toPavilionId, fareStr = r.estimatedFare>0?'<tr><td>费用</td><td style="text-align:right">¥'+r.estimatedFare.toFixed(1)+'</td></tr>':'';
+                pl.bindPopup(
+                    '<div style="padding:8px;min-width:200px">'+
+                    '<h6 style="color:'+c+';border-bottom:2px solid '+c+';padding-bottom:4px;margin:0 0 6px">'+(icons[mode]||'')+' '+r.routeName+'</h6>'+
+                    '<table style="width:100%;font-size:11px">'+
+                    '<tr><td>距离</td><td style="text-align:right">'+r.distanceKm+' km</td></tr>'+
+                    '<tr><td>耗时</td><td style="text-align:right">'+r.travelTimeMinutes+' 分钟</td></tr>'+
+                    '<tr><td>道路</td><td style="text-align:right">'+(r.roadType||'-')+'</td></tr>'+
+                    fareStr+
+                    (r.trafficCondition?'<tr><td>路况</td><td style="text-align:right">'+r.trafficCondition+'</td></tr>':'')+
+                    (isLoop?'<tr><td colspan="2" style="text-align:center;color:#e74c3c">环线</td></tr>':'')+
+                    '</table>'+
+                    (r.routeDescription?'<p style="margin-top:6px;font-size:11px;color:#999">'+r.routeDescription+'</p>':'')+
+                    '</div>'
+                );
+                pl.on('mouseover', function(){ this.setStyle({weight:w+2,opacity:1}); this.bringToFront(); });
+                pl.on('mouseout', function(){ this.setStyle({weight:w,opacity:.85}); });
+                (lyrMap[mode]||walkLyr).addLayer(pl);
+
+                if (viewer&&viewer.entities&&coords.length>0) {
+                    var pos = []; coords.forEach(function(c){pos.push(c[1],c[0]);});
+                    var ent = viewer.entities.add({ polyline: { positions: Cesium.Cartesian3.fromDegreesArray(pos), width:w, material: new Cesium.PolylineDashMaterialProperty({color:Cesium.Color.fromCssColorString(c),gapColor:Cesium.Color.WHITE.withAlpha(.2)}), clampToGround:true } });
+                    csRoutes.push(ent);
+                }
+            });
+
+            busLyr.addTo(lmap); taxiLyr.addTo(lmap); ebikeLyr.addTo(lmap); bikeLyr.addTo(lmap); walkLyr.addTo(lmap);
+        } catch(e) { toast('交通线加载失败: '+e.message, 'danger'); }
+    }
+    window.loadTransportRoutes = loadTransportRoutes;
+
+    var routesInitializing = false, routesInited = false;
+    async function initRoutes() {
+        if (routesInitializing) return;
+        routesInitializing = true;
+        try {
+            var resp = await fetch('/transport-routes/build-network', { method:'POST' }), result = await resp.json();
+            if (result.success) {
+                if (!routesInited) { toast('交通线初始化成功', 'success'); routesInited = true; }
+                clearRouteLayers(); routesInited = true;
+                setTimeout(function(){ routesInitializing = false; loadTransportRoutes(); }, 500);
+            } else {
+                routesInitializing = false;
+                toast('初始化失败: '+result.message, 'danger');
+            }
+        } catch(e) { routesInitializing = false; toast('初始化失败: '+e.message, 'danger'); }
+    }
+    window.initRoutes = initRoutes;
+
+    const CHK_IDS = { bus:'chkBus', taxi:'chkTaxi', ebike:'chkEBike', bike:'chkBicycle', walk:'chkWalking' };
+    function toggleMode(mode) {
+        var map = { bus: busLyr, taxi: taxiLyr, ebike: ebikeLyr, bike: bikeLyr, walk: walkLyr };
+        var lyr = map[mode]; if (!lyr) return;
+        var chk = document.getElementById(CHK_IDS[mode]);
+        if (chk.checked) lyr.addTo(lmap); else lmap.removeLayer(lyr);
+    }
+    window.toggleMode = toggleMode;
+
+    function toggleTraffic() {
+        var chk = document.getElementById('chkTraffic');
+        if (mapProv!=='gaode') { toast('实时路况仅高德地图可用', 'warning'); chk.checked=false; return; }
+        if (chk.checked) {
+            trafficLyr = L.tileLayer('https://tm.amap.com/trafficengine/mapabc/traffictile?v=1.0&t=1&x={x}&y={y}&z={z}', { subdomains:['1','2','3','4'], opacity:.7, maxZoom:18 }).addTo(lmap);
+            toast('实时路况已开启', 'info');
+        } else { if (trafficLyr) { lmap.removeLayer(trafficLyr); trafficLyr=null; } }
+    }
+    window.toggleTraffic = toggleTraffic;
+
+    function togglePavLayer() {
+        var v = document.getElementById('chkPavilion').checked;
+        for (var k in markers) { if (v) markers[k].addTo(lmap); else lmap.removeLayer(markers[k]); }
+        for (var k in csMarkers) { if (viewer&&viewer.entities.getById(k)) viewer.entities.getById(k).show=v; }
+    }
+    window.togglePavLayer = togglePavLayer;
+
+    function toggleAttrLayer() {
+        var v = document.getElementById('chkAttraction').checked;
+        if (pathLyr) { if (v) pathLyr.addTo(lmap); else lmap.removeLayer(pathLyr); }
+        if (csPath) csPath.show = v;
+    }
+    window.toggleAttrLayer = toggleAttrLayer;
+
+
+    function toggleSel(p) {
+        var idx = sel.findIndex(function(x){return x.id===p.id});
+        if (idx>-1) sel.splice(idx,1); else sel.push(p);
+        updateSelDisplay();
+        syncTableHighlight(p.id);
+    }
+    function updateSelDisplay() {
+        var div = document.getElementById('selList');
+        if (sel.length===0) { div.innerHTML='<p style="color:#888">暂未选择</p>'; return; }
+        var h = ''; sel.forEach(function(p){
+            h+='<div class="sel-item"><span>'+p.chineseName+'</span><span class="rm" onclick="removeSel('+p.id+')">&times;</span></div>';
+        }); div.innerHTML = h;
+    }
+    function removeSel(id) { sel = sel.filter(function(p){return p.id!==id}); updateSelDisplay(); }
+    window.removeSel = removeSel;
+
+
+    async function showDetail(p) {
+        var div = document.getElementById('pavDetail');
+        var ext = '';
+        try {
+            var resp = await fetch('/thousand-pavilions/multimedia/'+p.id), mm = await resp.json();
+            if (mm&&mm.imageGallery&&mm.imageGallery.length>0) {
+                ext+='<div style="margin-top:6px">';
+                mm.imageGallery.forEach(function(img,i){
+                    ext+='<img src="'+img+'" style="width:100%;border-radius:3px;margin-bottom:3px;cursor:pointer" onclick="showImg(\''+img+'\')">';
+                });
+                ext+='</div>';
+            }
+            if (mm&&mm.textGuide) ext+='<p style="font-size:10px;color:#999;margin-top:4px">'+mm.textGuide+'</p>';
+        } catch(e){}
+        div.innerHTML = '<div><b style="font-size:13px">'+p.chineseName+'</b> <small style="color:#888">('+(p.name||'')+')</small>'+
+            '<p style="margin:4px 0;font-size:11px">'+tLabel(p.type)+' | 评分:'+(p.visitorRating||'暂无')+'<br>坐标:('+p.longitude.toFixed(4)+','+p.latitude.toFixed(4)+')</p>'+
+            (p.description?'<p style="font-size:10px;color:#aaa">'+(p.description||'').substring(0,120)+'...</p>':'')+
+            ext+'</div>';
+    }
+    window.showImg = function(src) {
+        var old = document.getElementById('imgModal'); if (old) old.remove();
+        document.body.insertAdjacentHTML('beforeend','<div class="modal fade" id="imgModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">图片预览</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body text-center"><img src="'+src+'" class="img-fluid"></div></div></div></div>');
+        var m = new bootstrap.Modal(document.getElementById('imgModal')); m.show();
+        document.getElementById('imgModal').addEventListener('hidden.bs.modal', function h(){ this.remove(); this.removeEventListener('hidden.bs.modal',h); });
+    };
+
+
+    async function showBestPath() {
+        if (sel.length<2) { toast('请至少选择2个亭子', 'warning'); return; }
+        try {
+            var ids = sel.map(function(p){return p.id}), params = new URLSearchParams();
+            ids.forEach(function(id){params.append('pavilionIds',id)});
+            var resp = await fetch('/pavilions-gis/optimal-path?'+params.toString()), data = await resp.json();
+            if (pathLyr) { lmap.removeLayer(pathLyr); pathLyr=null; }
+            if (csPath) { viewer.entities.remove(csPath); csPath=null; }
+            if (data.success&&data.path&&data.path.length>0) {
+                var coords = data.path.map(function(pt){return [pt.latitude,pt.longitude]});
+                pathLyr = L.polyline(coords, {color:'red',weight:3}).addTo(lmap);
+                var pos = data.path.map(function(pt){return Cesium.Cartesian3.fromDegrees(pt.longitude,pt.latitude,100)});
+                csPath = viewer.entities.add({ polyline:{positions:pos,width:3,material:Cesium.Color.RED.withAlpha(.8),clampToGround:true} });
+                if (!is3D) lmap.fitBounds(pathLyr.getBounds());
+                toast('最优路径: '+data.pathLength.toFixed(2)+'km', 'success');
+            } else toast('路径规划失败', 'danger');
+        } catch(e) { toast('路径规划失败: '+e.message, 'danger'); }
+    }
+    window.showBestPath = showBestPath;
+
+    function clearPath() {
+        if (pathLyr) { lmap.removeLayer(pathLyr); pathLyr=null; }
+        if (csPath) { viewer.entities.remove(csPath); csPath=null; }
+    }
+    window.clearPath = clearPath;
+
+
+    function startNav() {
+        if (sel.length<2) { toast('请至少选择2个亭子', 'warning'); return; }
+        if (navActive) { toast('导航已在进行', 'info'); return; }
+        var ptGuide = document.getElementById('chkPointGuide').checked, lnGuide = document.getElementById('chkLineGuide').checked;
+        if (!ptGuide&&!lnGuide) { toast('请启用一种播报方式', 'warning'); return; }
+        navActive=true; navIdx=0;
+        if (ptGuide) doPointGuide();
+        if (lnGuide) doLineGuide();
+        toast('导航已开始', 'success');
+    }
+    window.startNav = startNav;
+
+    function stopNav() {
+        navActive=false; navIdx=0;
+        if ('speechSynthesis' in window) speechSynthesis.cancel();
+        toast('导航已停止', 'info');
+    }
+    window.stopNav = stopNav;
+
+    function doPointGuide() {
+        if (!navActive||navIdx>=sel.length) { if (navIdx>=sel.length) toast('播报完成', 'success'); stopNav(); return; }
+        var p = sel[navIdx], txt = '到达'+p.chineseName+'。';
+        if (p.description) txt += p.description.substring(0,50)+'。';
+        if (p.builtYear) txt += '建于'+p.builtYear+'年。';
+        txt += '类型是'+tLabel(p.type)+'。';
+        speak(txt, function(){ navIdx++; setTimeout(function(){ if (navActive) doPointGuide(); }, 5000); });
+    }
+
+    function doLineGuide() {
+        if (sel.length<2) return;
+        var f = sel[0], t = sel[sel.length-1], dist = 0;
+        for (var i=0;i<sel.length-1;i++) { dist+=calcDist(sel[i].longitude,sel[i].latitude,sel[i+1].longitude,sel[i+1].latitude); }
+        speak('从'+f.chineseName+'到'+t.chineseName+'，经过'+sel.length+'个亭子，约'+dist.toFixed(1)+'公里。');
+    }
+
+    function speak(text, onEnd) {
+        if ('speechSynthesis' in window) {
+            var u = new SpeechSynthesisUtterance(text); u.lang='zh-CN'; u.rate=.9;
+            if (onEnd) u.onend=onEnd;
+            speechSynthesis.speak(u);
+        } else { toast(text, 'info'); if (onEnd) setTimeout(onEnd, 3000); }
+    }
+
+    function calcDist(lon1,lat1,lon2,lat2) {
+        var R=6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+        var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+        return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    }
+
+
+    function addPavilion() {
+        editTarget=null; document.getElementById('pavModalTitle').textContent='添加亭子';
+        document.getElementById('pavForm').reset(); pavModal.show();
+    }
+    window.addPavilion = addPavilion;
+
+    function editCurPavilion() {
+        if (sel.length!==1) { toast('请选择一个亭子', 'warning'); return; }
+        editTarget=sel[0]; document.getElementById('pavModalTitle').textContent='编辑亭子';
+        document.getElementById('fName').value=editTarget.chineseName||'';
+        document.getElementById('fEName').value=editTarget.englishName||'';
+        document.getElementById('fType').value=tLabel(editTarget.pavilionType||editTarget.type);
+        document.getElementById('fYear').value=editTarget.builtYear||'';
+        document.getElementById('fLng').value=editTarget.longitude||'';
+        document.getElementById('fLat').value=editTarget.latitude||'';
+        document.getElementById('fDesc').value=editTarget.description||'';
+        document.getElementById('fStyle').value=editTarget.architecturalStyle||'';
+        document.getElementById('fRating').value=editTarget.visitorRating||'';
+        document.getElementById('fOpen').value=editTarget.isOpenToPublic?'true':'false';
+        pavModal.show();
+    }
+    window.editCurPavilion = editCurPavilion;
+
+    function delCurPavilion() {
+        if (sel.length!==1) { toast('请选择一个亭子', 'warning'); return; }
+        var p = sel[0];
+        if (!confirm('确定删除"'+p.chineseName+'"？')) return;
+        fetch('/thousand-pavilions/'+p.id, {method:'DELETE'}).then(function(r){
+            if (r.ok) { toast('删除成功', 'success'); sel=[]; updateSelDisplay(); loadPavilions(); }
+            else r.json().then(function(e){ toast('删除失败: '+(e.message||'未知'), 'danger'); });
+        });
+    }
+    window.delCurPavilion = delCurPavilion;
+
+    async function savePavilion() {
+        var data = {
+            chineseName: document.getElementById('fName').value,
+            englishName: document.getElementById('fEName').value,
+            pavilionType: document.getElementById('fType').value,
+            builtYear: document.getElementById('fYear').value ? parseInt(document.getElementById('fYear').value) : null,
+            longitude: parseFloat(document.getElementById('fLng').value),
+            latitude: parseFloat(document.getElementById('fLat').value),
+            description: document.getElementById('fDesc').value,
+            architecturalStyle: document.getElementById('fStyle').value,
+            visitorRating: document.getElementById('fRating').value ? parseFloat(document.getElementById('fRating').value) : null,
+            isOpenToPublic: document.getElementById('fOpen').value==='true'
+        };
+        if (!data.chineseName||!data.pavilionType||isNaN(data.longitude)||isNaN(data.latitude)) { toast('请填写必填字段', 'warning'); return; }
+        var url = '/thousand-pavilions', method='POST';
+        if (editTarget) { url+='/'+editTarget.id; method='PUT'; }
+        try {
+            var resp = await fetch(url, {method:method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)});
+            if (resp.ok) { toast(editTarget?'更新成功':'添加成功', 'success'); pavModal.hide(); loadPavilions(); }
+            else { var e = await resp.json(); toast('操作失败: '+(e.message||'未知'), 'danger'); }
+        } catch(e) { toast('操作失败: '+e.message, 'danger'); }
+    }
+
+
+    async function traverseAll() {
+        if (pavs.length < 2) { toast('亭子数量不足', 'warning'); return; }
+        if (!confirm('遍历全部 ' + pavs.length + ' 个亭子使用TSP求解+OSRM真实路网。这可能耗时数十秒。是否继续?')) return;
+        var ids = pavs.map(function(p){return p.id});
+        await runTspPlanning(ids, 'WALKING', 'distance');
+        // auto-start animation
+        if (tspPlanData) startTspPlay();
+    }
+    window.traverseAll = traverseAll;
+
+    async function tourismSvc() {
+        try {
+            var resp = await fetch('/thousand-pavilions/tourism-services'), s = await resp.json();
+            document.getElementById('pavDetail').innerHTML='<div><b>旅游服务</b>'+'<p style="font-size:11px;margin:4px 0">开放: '+s.openingHours+'<br>门票: '+s.ticketInfo+'<br>设施: '+(s.facilities||[]).join('、')+'<br>无障碍: '+s.accessibility+'<br>紧急: '+s.emergency+'</p></div>';
+        } catch(e) { toast('获取失败: '+e.message, 'danger'); }
+    }
+    window.tourismSvc = tourismSvc;
+
+    async function smartTour() {
+        var dur = prompt('预计游览时间 (分钟):', '240'); if (!dur) return;
+        try {
+            var resp = await fetch('/thousand-pavilions/smart-tour?duration='+dur), plan = await resp.json();
+            if (plan.route&&plan.route.length>0) {
+                var h = '<div><b>智能规划</b><p style="font-size:11px">共'+plan.totalPavilions+'个亭子, '+plan.totalDistance+'km, 约'+plan.estimatedDuration+'分钟</p>';
+                plan.route.forEach(function(s,i){
+                    h+='<div style="border-left:2px solid #4a86e8;padding-left:8px;margin:4px 0;font-size:11px"><b>'+s.order+'. '+s.name+'</b><br>'+tLabel(s.type)+(i>0?' | +'+(s.distanceFromPrevious||0)+'km':'')+'</div>';
+                });
+                h+='</div>'; document.getElementById('pavDetail').innerHTML = h;
+                var coords = plan.route.filter(function(s){return s.latitude&&s.longitude}).map(function(s){return[s.latitude,s.longitude]});
+                if (pathLyr) lmap.removeLayer(pathLyr);
+                if (coords.length>1) { pathLyr=L.polyline(coords,{color:'#27ae60',weight:4,dashArray:'10,10'}).addTo(lmap); lmap.fitBounds(pathLyr.getBounds()); }
+                toast('智能规划完成', 'success');
+            }
+        } catch(e) { toast('规划失败: '+e.message, 'danger'); }
+    }
+    window.smartTour = smartTour;
+
+    async function showWeather() {
+        try {
+            var resp = await fetch('/thousand-pavilions/weather'), w = await resp.json();
+            document.getElementById('pavDetail').innerHTML='<div style="background:linear-gradient(135deg,#74b9ff,#0984e3);color:#fff;padding:12px;border-radius:4px"><b>天气预报</b><div style="font-size:32px;margin:8px 0">'+w.temperature+'°C</div>'+w.condition+'<br><small>湿度:'+w.humidity+'% | '+w.windSpeed+'</small><p style="margin-top:8px;font-size:11px">'+w.recommendation+'</p></div>';
+        } catch(e) { toast('获取天气失败: '+e.message, 'danger'); }
+    }
+    window.showWeather = showWeather;
+
+    async function nearbyFac() {
+        if (sel.length===0) { toast('请先选择一个亭子', 'warning'); return; }
+        var p = sel[0], rad = prompt('搜索半径 (公里):', '1'); if (!rad) return;
+        try {
+            var resp = await fetch('/thousand-pavilions/nearby-facilities/'+p.id+'?radius='+rad), f = await resp.json();
+            if (f.error) { toast(f.error, 'danger'); return; }
+            var h = '<div><b>附近设施</b><p style="font-size:10px;color:#888">半径: '+f.searchRadius+'km</p>';
+            if (f.facilities) f.facilities.forEach(function(fc){
+                h+='<div style="background:rgba(255,255,255,.04);padding:6px;border-radius:3px;margin:3px 0"><b style="font-size:11px">'+fc.icon+' '+fc.name+'</b><p style="font-size:10px;margin:2px 0">'+fc.description+'</p><small style="color:#888">距离约'+calcDist(p.longitude,p.latitude,fc.longitude,fc.latitude).toFixed(2)+'km</small></div>';
+            });
+            h+='</div>'; document.getElementById('pavDetail').innerHTML = h;
+        } catch(e) { toast('获取附近设施失败: '+e.message, 'danger'); }
+    }
+    window.nearbyFac = nearbyFac;
+
+    async function shareRoute() {
+        if (sel.length<2) { toast('请至少选择2个亭子', 'warning'); return; }
+        var name = prompt('路线名称:', '我的亭城之旅'); if (!name) return;
+        try {
+            var resp = await fetch('/thousand-pavilions/share-route', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({pavilionIds:sel.map(function(p){return p.id}),routeName:name})
+            }), info = await resp.json();
+            if (info.shareUrl) {
+                document.getElementById('pavDetail').innerHTML='<div><b>分享路线</b><p style="font-size:11px">'+info.routeName+'<br>共'+info.totalPavilions+'个亭子, '+info.totalDistance+'km, 约'+info.estimatedDuration+'分钟</p><code style="word-break:break-all;font-size:10px">'+window.location.origin+info.shareUrl+'</code></div>';
+                toast('分享链接已生成', 'success');
+            }
+        } catch(e) { toast('分享失败: '+e.message, 'danger'); }
+    }
+    window.shareRoute = shareRoute;
+
+    function showImportDialog() {
+        document.getElementById('impFile').value = '';
+        document.getElementById('impProgress').style.display = 'none';
+        document.getElementById('impResult').style.display = 'none';
+        impModal.show();
+    }
+    window.showImportDialog = showImportDialog;
+
+    async function doImport() {
+        var fi = document.getElementById('impFile');
+        if (!fi.files || !fi.files[0]) { toast('请选择文件', 'warning'); return; }
+        var fd = new FormData(); fd.append('file', fi.files[0]);
+        document.getElementById('impProgress').style.display = 'block';
+        document.getElementById('impResult').style.display = 'none';
+        document.getElementById('startImportBtn').disabled = true;
+        try {
+            var resp = await fetch('/thousand-pavilions/import', { method:'POST', body:fd });
+            var data = await resp.json();
+            document.getElementById('impProgress').style.display = 'none';
+            document.getElementById('startImportBtn').disabled = false;
+            var rd = document.getElementById('impResult'); rd.style.display = 'block';
+            if (data.success) {
+                rd.innerHTML = '<div style="color:#2ecc71;">'+data.message+'</div>';
+                if (data.data && data.data.errors && data.data.errors.length>0)
+                    rd.innerHTML += '<div style="color:#f39c12;margin-top:4px;max-height:120px;overflow-y:auto;">'+data.data.errors.slice(0,20).join('<br>')+'</div>';
+                toast('导入完成', 'success');
+                setTimeout(loadPavilions, 500);
+            } else {
+                rd.innerHTML = '<div style="color:#e74c3c;">'+data.message+'</div>';
+                toast('导入失败', 'danger');
+            }
+        } catch(e) {
+            document.getElementById('impProgress').style.display = 'none';
+            document.getElementById('startImportBtn').disabled = false;
+            toast('导入失败: '+e.message, 'danger');
+        }
+    }
+    window.doImport = doImport;
+
+    function dlExport(fmt) {
+        window.open('/thousand-pavilions/export/'+fmt, '_blank');
+        toast('导出中...', 'info');
+    }
+    window.dlExport = dlExport;
+
+    function dlTemplate(fmt) {
+        window.open('/thousand-pavilions/export/'+fmt+'-template', '_blank');
+        toast('模板下载中...', 'info');
+    }
+    window.dlTemplate = dlTemplate;
+
+
+    function showOnCesium() {
+        if (!viewer) return;
+        pavs.forEach(function(p){
+            if (!p.latitude||!p.longitude||viewer.entities.getById(p.id.toString())) return;
+            var c = Cesium.Color[tStyle(p.type).cesium];
+            csMarkers[p.id] = viewer.entities.add({
+                id: p.id.toString(), position: Cesium.Cartesian3.fromDegrees(p.longitude,p.latitude,10),
+                point: { pixelSize:10, color:c, outlineColor:Cesium.Color.WHITE, outlineWidth:2, heightReference:Cesium.HeightReference.CLAMP_TO_GROUND },
+                label: { text:p.chineseName, font:'14pt monospace', fillColor:Cesium.Color.WHITE, outlineColor:Cesium.Color.BLACK, outlineWidth:2, horizontalOrigin:Cesium.HorizontalOrigin.LEFT, verticalOrigin:Cesium.VerticalOrigin.BOTTOM, eyeOffset:new Cesium.Cartesian3(-20,0,0), heightReference:Cesium.HeightReference.CLAMP_TO_GROUND }
+            });
+        });
+    }
+
+
+    // ── TSP Route Animation ──
+    let tspAnimMarker = null, tspAnimPath = null, tspAnimTimer = null;
+    let tspSnapLayers = [], tspPlanData = null, tspProgress = 0, tspPaused = true;
+    let tspSpeed = 1, tspAnimMs = 0, tspAnimStart = 0, tspProgressStart = 0;
+    let tspSetupModal = null, plansModal = null;
+    let tspLastIdx = 0, tspUiEls = null;
+    const TSP_MODE_COLORS = {BUS:'#3498db', TAXI:'#f39c12', E_BIKE:'#2ecc71', BICYCLE:'#e67e22', WALKING:'#e74c3c'};
+    const TSP_SNAP_THRESHOLD_M = 5;
+    const TSP_ANIM_MS_PER_KM = 1500, TSP_ANIM_MS_MIN = 8000, TSP_ANIM_MS_MAX = 90000;
+
+    function openTspSetup() {
+        var scope = document.getElementById('tspScope');
+        var info = document.getElementById('tspScopeInfo');
+        var refresh = function(){
+            if (scope.value === 'selected') info.textContent = '当前已选: ' + sel.length + ' 个亭子' + (sel.length<2?' (至少需要2个)':'');
+            else info.textContent = '将规划全部 ' + pavs.length + ' 个亭子(可能耗时较长)';
+        };
+        scope.onchange = refresh; refresh();
+        // Apply checked styling to mode/objective grids
+        document.querySelectorAll('#tspModeGrid label, #tspObjGrid label').forEach(function(l){
+            l.classList.toggle('checked', l.querySelector('input').checked);
+            l.onclick = function(){
+                var grp = l.parentElement.querySelectorAll('label');
+                grp.forEach(function(x){ x.classList.remove('checked'); x.querySelector('input').checked = false; });
+                l.classList.add('checked'); l.querySelector('input').checked = true;
+            };
+        });
+        if (!tspSetupModal) tspSetupModal = new bootstrap.Modal(document.getElementById('tspSetupModal'));
+        tspSetupModal.show();
+    }
+    window.openTspSetup = openTspSetup;
+
+    document.getElementById('tspStartBtn').addEventListener('click', async function(){
+        var mode = document.querySelector('input[name=tspMode]:checked').value;
+        var objective = document.querySelector('input[name=tspObj]:checked').value;
+        var scope = document.getElementById('tspScope').value;
+        var ids;
+        if (scope === 'selected') {
+            if (sel.length < 2) { toast('请至少选择2个亭子', 'warning'); return; }
+            ids = sel.map(function(p){return p.id});
+        } else {
+            ids = pavs.map(function(p){return p.id});
+            if (ids.length < 2) { toast('亭子数量不足', 'warning'); return; }
+        }
+        tspSetupModal.hide();
+        await runTspPlanning(ids, mode, objective);
+    });
+
+    async function runTspPlanning(ids, mode, objective) {
+        toast('TSP路线规划中... ('+ids.length+' 个亭子)', 'info');
+        try {
+            var resp = await fetch('/transport-routes/tsp-plan', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({pavilionIds: ids, mode: mode, objective: objective})
+            });
+            var data = await resp.json();
+            if (!data.success || !data.segments || data.segments.length===0) {
+                toast('TSP路线规划失败: '+(data.message||'无数据'), 'danger'); return;
+            }
+            stopTspAnimation(); clearPath();
+            setupTspAnimation(data);
+        } catch(e) { toast('TSP规划失败: '+e.message, 'danger'); }
+    }
+
+    function setupTspAnimation(data) {
+        tspPlanData = data;
+        var c = TSP_MODE_COLORS[data.mode] || '#95a5a6';
+
+        var allLeaf = data.allCoordinates.map(function(pt){return leafCoord(pt[0],pt[1]);});
+        tspAnimPath = L.polyline(allLeaf, {color:c, weight:4, opacity:.85, smoothFactor:.5}).addTo(lmap);
+        lmap.fitBounds(tspAnimPath.getBounds(), {padding:[30,30]});
+
+        tspSnapLayers.forEach(function(l){ if(lmap.hasLayer(l)) lmap.removeLayer(l); });
+        tspSnapLayers = [];
+        data.segments.forEach(function(seg){
+            addSnapLine(seg.fromLng, seg.fromLat, seg.snapFrom, seg.fromName);
+            addSnapLine(seg.toLng, seg.toLat, seg.snapTo, seg.toName);
+        });
+
+        var animIcon = L.divIcon({
+            className:'tsp-anim-marker',
+            html:'<div style="width:18px;height:18px;background:'+c+';border:3px solid #fff;border-radius:50%;box-shadow:0 0 14px '+c+';animation:tspPulse .8s infinite;"></div>',
+            iconSize:[18,18], iconAnchor:[9,9]
+        });
+        tspAnimMarker = L.marker(allLeaf[0], {icon:animIcon}).addTo(lmap);
+
+        var flat=[], cum=0;
+        data.allCoordinates.forEach(function(pt,i){
+            if (i>0) cum += calcDist(data.allCoordinates[i-1][1], data.allCoordinates[i-1][0], pt[1], pt[0]);
+            flat.push({wgs:pt, leaf:allLeaf[i], cumDist:cum});
+        });
+        data._flat = flat;
+        tspAnimMs = Math.max(TSP_ANIM_MS_MIN, Math.min(data.totalDistance * TSP_ANIM_MS_PER_KM, TSP_ANIM_MS_MAX));
+
+        tspProgress = 0; tspPaused = true; tspLastIdx = 0;
+        tspUiEls = {
+            fill: document.getElementById('tspcFill'),
+            pct: document.getElementById('tspcPct'),
+            counter: document.getElementById('tspcCounter'),
+            info: document.getElementById('tspcInfo'),
+            play: document.getElementById('tspcPlay')
+        };
+        document.getElementById('tspCtrl').classList.add('show');
+        tspUiEls.play.textContent = '▶ 播放';
+        updateTspUi(0, c);
+    }
+
+    function addSnapLine(pavLng, pavLat, snap, label) {
+        if (!snap || !snap.offsetM || snap.offsetM <= TSP_SNAP_THRESHOLD_M) return;
+        var pavLeaf = leafCoord(pavLng, pavLat);
+        var snapLeaf = leafCoord(snap.lng, snap.lat);
+        var dl = L.polyline([pavLeaf, snapLeaf], {color:'#f39c12', weight:2, dashArray:'6,5', opacity:.75})
+            .bindTooltip(label + ' → 路线 (' + snap.offsetM.toFixed(0) + 'm)', {direction:'top'})
+            .addTo(lmap);
+        tspSnapLayers.push(dl);
+    }
+
+    function startTspPlay() {
+        if (!tspPlanData) return;
+        tspPaused = false;
+        tspAnimStart = Date.now();
+        tspProgressStart = tspProgress;
+        tspUiEls.play.textContent = '⏸ 暂停';
+        tspStep();
+    }
+
+    function pauseTspPlay() {
+        tspPaused = true;
+        if (tspUiEls) tspUiEls.play.textContent = '▶ 播放';
+        if (tspAnimTimer) { clearTimeout(tspAnimTimer); tspAnimTimer = null; }
+    }
+
+    function tspStep() {
+        if (!tspPlanData || tspPaused) return;
+        var elapsed = (Date.now() - tspAnimStart) * tspSpeed;
+        tspProgress = Math.min(tspProgressStart + elapsed/tspAnimMs, 1.0);
+        var c = TSP_MODE_COLORS[tspPlanData.mode] || '#95a5a6';
+        updateTspUi(tspProgress, c);
+        if (tspProgress < 1.0) {
+            tspAnimTimer = setTimeout(tspStep, 50);
+        } else {
+            tspPaused = true;
+            tspUiEls.play.textContent = '✓ 完成';
+            toast('TSP完成: '+tspPlanData.totalDistance.toFixed(1)+'km, '+
+                Math.round(tspPlanData.totalDuration/60)+'min, ¥'+
+                (tspPlanData.totalCost||0).toFixed(2), 'success');
+        }
+    }
+
+    function updateTspUi(prog, color) {
+        if (!tspPlanData) return;
+        var flat = tspPlanData._flat;
+        var tgt = prog * tspPlanData.totalDistance;
+        // Hot path: amortized O(1) — tspLastIdx only resets on seek/setup
+        if (flat[tspLastIdx] && flat[tspLastIdx].cumDist > tgt) tspLastIdx = 0;
+        while (tspLastIdx < flat.length-1 && flat[tspLastIdx+1].cumDist < tgt) tspLastIdx++;
+        if (tspAnimMarker) tspAnimMarker.setLatLng(flat[tspLastIdx].leaf);
+        tspUiEls.fill.style.width = (prog*100)+'%';
+        tspUiEls.pct.textContent = Math.round(prog*100)+'%';
+        tspUiEls.counter.textContent =
+            (prog*tspPlanData.totalDistance).toFixed(2) + ' / ' + tspPlanData.totalDistance.toFixed(2) + ' km';
+        var totalMin = Math.round(tspPlanData.totalDuration / 60);
+        tspUiEls.info.innerHTML =
+            '<b style="color:'+color+'">TSP['+tspPlanData.mode+'/'+tspPlanData.objective+']</b> '+
+            '路程<b>'+tspPlanData.totalDistance.toFixed(1)+'km</b> 时间<b>'+totalMin+'min</b>'+
+            (tspPlanData.totalCost ? ' 费用<b>¥'+tspPlanData.totalCost.toFixed(0)+'</b>' : '') +
+            ' (经过 '+(tspPlanData.visitOrderIds.length-1)+' 亭子)';
+    }
+
+    function stopTspAnimation() {
+        tspPaused = true;
+        if (tspAnimTimer) { clearTimeout(tspAnimTimer); tspAnimTimer = null; }
+        if (tspAnimMarker) { lmap.removeLayer(tspAnimMarker); tspAnimMarker = null; }
+        if (tspAnimPath) { lmap.removeLayer(tspAnimPath); tspAnimPath = null; }
+        tspSnapLayers.forEach(function(l){ if(lmap.hasLayer(l)) lmap.removeLayer(l); });
+        tspSnapLayers = [];
+        document.getElementById('tspCtrl').classList.remove('show');
+        tspPlanData = null; tspUiEls = null; tspLastIdx = 0;
+    }
+    window.stopTspAnimation = stopTspAnimation;
+
+    document.getElementById('tspcPlay').addEventListener('click', function(){
+        if (!tspPlanData) return;
+        if (tspProgress >= 1.0) { tspProgress = 0; tspProgressStart = 0; updateTspUi(0,'#ff9800'); }
+        if (tspPaused) startTspPlay(); else pauseTspPlay();
+    });
+    document.getElementById('tspcReset').addEventListener('click', function(){
+        if (!tspPlanData) return;
+        pauseTspPlay();
+        tspProgress = 0; tspProgressStart = 0; tspLastIdx = 0;
+        updateTspUi(0, '#ff9800');
+    });
+    document.getElementById('tspcSpeed').addEventListener('change', function(){
+        tspSpeed = parseFloat(this.value);
+        if (!tspPaused) {
+            // resync time base for new speed
+            tspProgressStart = tspProgress;
+            tspAnimStart = Date.now();
+        }
+    });
+    document.getElementById('tspcBar').addEventListener('click', function(e){
+        if (!tspPlanData) return;
+        var rect = this.getBoundingClientRect();
+        var p = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        pauseTspPlay();
+        tspProgress = p; tspProgressStart = p; tspLastIdx = 0;
+        updateTspUi(p, '#ff9800');
+    });
+    document.getElementById('tspcClose').addEventListener('click', stopTspAnimation);
+    document.getElementById('tspcSave').addEventListener('click', async function(){
+        if (!tspPlanData) return;
+        var name = prompt('方案名称', '方案-' + new Date().toLocaleString('zh-CN'));
+        if (!name) return;
+        try {
+            var resp = await fetch('/route-plans', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({
+                    planName: name, mode: tspPlanData.mode, objective: tspPlanData.objective,
+                    plan: tspPlanData
+                })
+            });
+            var data = await resp.json();
+            if (data.success) toast('方案已保存: ' + (data.data && data.data.planName), 'success');
+            else toast('保存失败: ' + (data.message||''), 'danger');
+        } catch(e) { toast('保存失败: '+e.message, 'danger'); }
+    });
+
+    // ── Saved Plans ──
+    function openSavedPlans() {
+        if (!plansModal) plansModal = new bootstrap.Modal(document.getElementById('plansModal'));
+        plansModal.show();
+        loadSavedPlans();
+    }
+    window.openSavedPlans = openSavedPlans;
+
+    async function loadSavedPlans() {
+        var list = document.getElementById('plansList');
+        list.innerHTML = '加载中...';
+        try {
+            var resp = await fetch('/route-plans');
+            var data = await resp.json();
+            if (!data.success || data.count===0) { list.innerHTML = '<p style="color:#888">暂无保存的方案</p>'; return; }
+            var html = '<table style="width:100%;font-size:11px"><thead><tr style="border-bottom:1px solid rgba(255,255,255,.1)">'
+                + '<th style="padding:6px">名称</th><th>模式</th><th>目标</th><th>亭子</th><th>距离</th><th>费用</th><th>时间</th><th></th></tr></thead><tbody>';
+            data.data.forEach(function(p){
+                html += '<tr style="border-bottom:1px solid rgba(255,255,255,.05)">'
+                    + '<td style="padding:5px"><b>'+p.planName+'</b><br><span style="color:#666;font-size:10px">'+(p.createdAt||'')+'</span></td>'
+                    + '<td>'+(p.transportMode||'-')+'</td>'
+                    + '<td>'+(p.objective||'-')+'</td>'
+                    + '<td>'+(p.pavilionCount||0)+'</td>'
+                    + '<td>'+(p.totalDistance!=null?p.totalDistance.toFixed(2)+'km':'-')+'</td>'
+                    + '<td>'+(p.totalCost!=null?'¥'+p.totalCost.toFixed(0):'-')+'</td>'
+                    + '<td>'+(p.totalDuration!=null?Math.round(p.totalDuration/60)+'min':'-')+'</td>'
+                    + '<td>'
+                    + '<button class="btn btn-sm" style="font-size:10px;background:rgba(255,152,0,.2);color:#ff9800;margin-right:4px" onclick="loadPlan('+p.id+')">▶ 加载</button>'
+                    + '<button class="btn btn-sm" style="font-size:10px;background:rgba(231,76,60,.2);color:#e74c3c" onclick="delPlan('+p.id+')">删除</button>'
+                    + '</td></tr>';
+            });
+            html += '</tbody></table>';
+            list.innerHTML = html;
+        } catch(e) { list.innerHTML = '<p style="color:#e74c3c">加载失败: '+e.message+'</p>'; }
+    }
+
+    async function loadPlan(id) {
+        try {
+            var resp = await fetch('/route-plans/'+id);
+            var data = await resp.json();
+            if (!data.success || !data.plan) { toast('加载方案失败', 'danger'); return; }
+            plansModal.hide();
+            stopTspAnimation();
+            setupTspAnimation(data.plan);
+            toast('方案已加载,点击播放查看动画', 'success');
+        } catch(e) { toast('加载失败: '+e.message, 'danger'); }
+    }
+    window.loadPlan = loadPlan;
+
+    async function delPlan(id) {
+        if (!confirm('确认删除该方案?')) return;
+        try {
+            var resp = await fetch('/route-plans/'+id, {method:'DELETE'});
+            var data = await resp.json();
+            if (data.success) { toast('方案已删除', 'success'); loadSavedPlans(); }
+            else toast('删除失败', 'danger');
+        } catch(e) { toast('删除失败: '+e.message, 'danger'); }
+    }
+    window.delPlan = delPlan;
+
+    // ── Coordinate Correction ──
+    async function correctCoordinates() {
+        if (!confirm('将为所有亭子计算 GCJ-02 坐标(用于高德/腾讯地图)。继续?')) return;
+        toast('正在批量纠偏...', 'info');
+        try {
+            var resp = await fetch('/coordinate/correct-pavilions?force=true', {method:'POST'});
+            var data = await resp.json();
+            if (data.success) {
+                toast('纠偏完成: 更新 '+data.updated+' 条 / 共 '+data.total+' 条', 'success');
+                loadPavilions();
+            } else toast('纠偏失败', 'danger');
+        } catch(e) { toast('纠偏失败: '+e.message, 'danger'); }
+    }
+    window.correctCoordinates = correctCoordinates;
+
+    async function buildMultiModal() {
+        if (!confirm('多模式路网将为每对亭子构建多种交通方式(driving/cycling/foot)。耗时较长且会清除现有路网。继续?')) return;
+        toast('多模式路网构建中...(可能需要数分钟)', 'info');
+        try {
+            var resp = await fetch('/transport-routes/build-multi-modal', {method:'POST'});
+            var data = await resp.json();
+            if (data.success) {
+                toast('已创建 '+data.data.routesCreated+' 条多模式路线', 'success');
+                loadTransportRoutes();
+            } else toast('构建失败: '+(data.message||''), 'danger');
+        } catch(e) { toast('构建失败: '+e.message, 'danger'); }
+    }
+    window.buildMultiModal = buildMultiModal;
+
+    function calcDist(lon1, lat1, lon2, lat2) {
+        var R=6371, dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+        var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+        return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    }
+
+    document.getElementById('mapProvSel').addEventListener('change', function(){ switchMap(this.value); });
+    document.getElementById('savePavBtn').addEventListener('click', savePavilion);
+    document.getElementById('saveScenicBtn').addEventListener('click', saveScenic);
+    document.getElementById('saveAdminBtn').addEventListener('click', saveAdmin);
+    document.getElementById('startImportBtn').addEventListener('click', doImport);
+
+
+    function boot() {
+        pavModal = new bootstrap.Modal(document.getElementById('pavModal'));
+        impModal = new bootstrap.Modal(document.getElementById('impModal'));
+        scenicModal = new bootstrap.Modal(document.getElementById('scenicModal'));
+        adminModal = new bootstrap.Modal(document.getElementById('adminModal'));
+        initMaps();
+    }
+    if (document.readyState === 'complete') boot();
+    else window.addEventListener('load', boot);
+
+    // ==================== Tab / Data View ====================
+
+    var tblSortField = null, tblSortAsc = true;
+
+    function switchTab(tab) {
+        var btns = document.querySelectorAll('#tabBar .tab-btn');
+        btns.forEach(function(b){ b.classList.remove('active'); });
+        var mapView = document.getElementById('mapwrap');
+        var pavView = document.getElementById('dataView');
+        var scenicView = document.getElementById('scenicDataView');
+        var adminView = document.getElementById('adminDataView');
+        // hide all data views
+        [pavView, scenicView, adminView].forEach(function(v){ v.classList.remove('show'); });
+        mapView.style.display = 'none';
+
+        if (tab === 'map') {
+            btns[0].classList.add('active');
+            mapView.style.display = '';
+        } else if (tab === 'pavilion') {
+            btns[1].classList.add('active');
+            pavView.classList.add('show');
+            document.getElementById('statsDashboard').style.display = '';
+            renderDataTable();
+            renderStats();
+        } else if (tab === 'scenic') {
+            btns[2].classList.add('active');
+            scenicView.classList.add('show');
+            document.getElementById('scenicStatsDash').style.display = '';
+            loadScenicAreas();
+        } else if (tab === 'admin') {
+            btns[3].classList.add('active');
+            adminView.classList.add('show');
+            document.getElementById('adminStatsDash').style.display = '';
+            loadAdminDivisions();
+        }
+    }
+    window.switchTab = switchTab;
+
+    function renderDataTable(filter) {
+        var tbody = document.getElementById('tblBody');
+        var rows = pavs.slice();
+        // filter
+        if (filter) {
+            var q = filter.toLowerCase();
+            rows = rows.filter(function(p){
+                return (p.chineseName||'').toLowerCase().includes(q) ||
+                       (p.locationDesc||'').toLowerCase().includes(q) ||
+                       (p.structure||'').toLowerCase().includes(q) ||
+                       (p.topStyle||'').toLowerCase().includes(q) ||
+                       (p.street||'').toLowerCase().includes(q);
+            });
+        }
+        // sort
+        if (tblSortField) {
+            rows.sort(function(a,b){
+                var va = a[tblSortField], vb = b[tblSortField];
+                if (va == null) va = ''; if (vb == null) vb = '';
+                if (typeof va === 'string') va = va.toLowerCase();
+                if (typeof vb === 'string') vb = vb.toLowerCase();
+                if (va < vb) return tblSortAsc ? -1 : 1;
+                if (va > vb) return tblSortAsc ? 1 : -1;
+                return 0;
+            });
+        }
+        var h = '';
+        rows.forEach(function(p){
+            var inSel = sel.findIndex(function(x){return x.id===p.id}) > -1;
+            var st = tStyle(p.type);
+            h += '<tr data-pid="'+p.id+'" class="'+(inSel?'sel-row':'')+'" onclick="selectFromTable('+p.id+')">';
+            h += '<td class="col-id">'+p.id+'</td>';
+            h += '<td class="col-name">'+escHtml(p.chineseName||p.name||'')+'</td>';
+            h += '<td class="col-struct">'+escHtml(p.structure||'')+'</td>';
+            h += '<td class="col-style" title="'+escHtml(p.topStyle||'')+'">'+escHtml(p.topStyle||'')+'</td>';
+            h += '<td class="col-loc" title="'+escHtml(p.locationDesc||'')+'">'+escHtml(p.locationDesc||'')+'</td>';
+            h += '<td class="col-street">'+escHtml(p.street||'')+'</td>';
+            h += '<td class="col-area">'+(p.areaSize!=null?p.areaSize:'')+'</td>';
+            h += '<td class="col-rating">'+(p.visitorRating!=null?p.visitorRating:'')+'</td>';
+            h += '<td class="col-type"><span class="type-badge '+st.cls+'">'+(p.typeLabel||p.type||'')+'</span></td>';
+            var cc = p.collectorCount || 0;
+            h += '<td class="col-collector"><span class="collector-badge" onclick="event.stopPropagation();showCollectorInfo('+p.id+')" title="'+cc+'条采集记录">'+cc+'条</span></td>';
+            h += '</tr>';
+        });
+        tbody.innerHTML = h;
+        document.getElementById('tblTotal').textContent = rows.length;
+        document.getElementById('tblSelCnt').textContent = sel.length;
+    }
+
+    function escHtml(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function syncTableHighlight(id) {
+        var dataView = document.getElementById('dataView');
+        if (!dataView.classList.contains('show')) return;
+        // update row styling
+        var rows = document.querySelectorAll('#tblBody tr');
+        rows.forEach(function(tr){
+            var pid = parseInt(tr.getAttribute('data-pid'));
+            var inSel = sel.findIndex(function(x){return x.id===pid}) > -1;
+            if (inSel) tr.classList.add('sel-row'); else tr.classList.remove('sel-row');
+        });
+        document.getElementById('tblSelCnt').textContent = sel.length;
+        // scroll to target
+        var target = document.querySelector('#tblBody tr[data-pid="'+id+'"]');
+        if (target) { target.classList.add('active-row'); setTimeout(function(){ target.classList.remove('active-row'); }, 1500); target.scrollIntoView({block:'center',behavior:'smooth'}); }
+    }
+
+    function selectFromTable(id) {
+        var p = pavs.find(function(x){return x.id===id});
+        if (!p) return;
+        // toggle selection
+        var idx = sel.findIndex(function(x){return x.id===id});
+        if (idx>-1) sel.splice(idx,1); else sel.push(p);
+        updateSelDisplay();
+        showDetail(p);
+        syncTableHighlight(id);
+        // fly map to point if in map view
+        if (!is3D && lmap && p.latitude && p.longitude) {
+            lmap.setView([p.latitude, p.longitude], lmap.getZoom()<15?15:lmap.getZoom());
+        } else if (is3D && viewer) {
+            viewer.camera.flyTo({destination:Cesium.Cartesian3.fromDegrees(p.longitude,p.latitude,500),duration:1});
+        }
+    }
+    window.selectFromTable = selectFromTable;
+
+    function filterTable() {
+        var q = document.getElementById('tblSearch').value;
+        renderDataTable(q);
+    }
+    window.filterTable = filterTable;
+
+    function tblSort(field) {
+        if (tblSortField === field) tblSortAsc = !tblSortAsc;
+        else { tblSortField = field; tblSortAsc = true; }
+        // update header indicators
+        document.querySelectorAll('#dataTable thead th').forEach(function(th){ th.classList.remove('sorted'); });
+        var colMap = {id:0,chineseName:1,structure:2,topStyle:3,locationDesc:4,street:5,areaSize:6,visitorRating:7,type:8,collectorCount:9};
+        var th = document.querySelectorAll('#dataTable thead th')[colMap[field]];
+        if (th) { th.classList.add('sorted'); th.querySelector('.sort-arrow').textContent = tblSortAsc?'▲':'▼'; }
+        renderDataTable(document.getElementById('tblSearch').value);
+    }
+    window.tblSort = tblSort;
+
+    function tblClearSel() {
+        sel = [];
+        updateSelDisplay();
+        renderDataTable(document.getElementById('tblSearch').value);
+    }
+    window.tblClearSel = tblClearSel;
+
+    function exportTableCSV() {
+        var q = document.getElementById('tblSearch').value;
+        var rows = pavs.slice();
+        if (q) {
+            var fq = q.toLowerCase();
+            rows = rows.filter(function(p){
+                return (p.chineseName||'').toLowerCase().includes(fq) ||
+                       (p.locationDesc||'').toLowerCase().includes(fq) ||
+                       (p.structure||'').toLowerCase().includes(fq) ||
+                       (p.topStyle||'').toLowerCase().includes(fq) ||
+                       (p.street||'').toLowerCase().includes(fq);
+            });
+        }
+        var csv = '﻿ID,名称,结构,风格(平立面),位置,街道,面积(m²),评分,类型,采集记录\n';
+        rows.forEach(function(p){
+            csv += [p.id, '"'+(p.chineseName||'')+'"', '"'+(p.structure||'')+'"', '"'+(p.topStyle||'')+'"',
+                '"'+(p.locationDesc||'')+'"', '"'+(p.street||'')+'"', p.areaSize||'', p.visitorRating||'',
+                '"'+(p.typeLabel||p.type||'')+'"', p.collectorCount||0].join(',') + '\n';
+        });
+        var blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url; a.download = 'pavilion_data.csv';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast('已导出 '+rows.length+' 条数据', 'success');
+    }
+    window.exportTableCSV = exportTableCSV;
+
+    function renderStats() {
+        if (pavs.length === 0) return;
+        function countBy(arr, field) {
+            var map = {};
+            arr.forEach(function(p){
+                var val = p[field];
+                if (!val || (typeof val === 'string' && val.trim() === '')) val = '未分类';
+                map[val] = (map[val] || 0) + 1;
+            });
+            return map;
+        }
+        function renderBarChart(cid, title, mapObs) {
+            var entries = Object.entries(mapObs).sort(function(a,b){ return b[1] - a[1]; });
+            var max = entries.length > 0 ? entries[0][1] : 1;
+            var h = '<h6>'+title+' ('+entries.length+'种)</h6>';
+            var topN = entries.slice(0, 15);
+            topN.forEach(function(e){
+                var pct = Math.round(e[1] / max * 100);
+                h += '<div class="stat-bar-row">' +
+                    '<span class="bar-label" title="'+escHtml(e[0])+'">'+escHtml(e[0])+'</span>' +
+                    '<span class="bar-track"><span class="bar-fill" style="width:'+pct+'%"></span></span>' +
+                    '<span class="bar-cnt">'+e[1]+'</span>' +
+                    '</div>';
+            });
+            if (entries.length > 15)
+                h += '<span class="stat-toggle" onclick="this.style.display=\'none\';var c=document.getElementById(\''+cid+'\');c.innerHTML=c._fullHtml">显示全部('+entries.length+'项)</span>';
+            document.getElementById(cid).innerHTML = h;
+            if (entries.length > 15) {
+                var fullH = '<h6>'+title+' ('+entries.length+'种)</h6>';
+                entries.forEach(function(e){
+                    var pct = Math.round(e[1] / max * 100);
+                    fullH += '<div class="stat-bar-row">' +
+                        '<span class="bar-label" title="'+escHtml(e[0])+'">'+escHtml(e[0])+'</span>' +
+                        '<span class="bar-track"><span class="bar-fill" style="width:'+pct+'%"></span></span>' +
+                        '<span class="bar-cnt">'+e[1]+'</span></div>';
+                });
+                document.getElementById(cid)._fullHtml = fullH;
+            }
+        }
+        var structMap = countBy(pavs, 'structure');
+        var styleMap = countBy(pavs, 'topStyle');
+        var streetMap = countBy(pavs, 'street');
+        var typeMap = countBy(pavs, 'typeLabel');
+        renderBarChart('chartStructure', '结构分布', structMap);
+        renderBarChart('chartTopStyle', '风格/平立面分布', styleMap);
+        renderBarChart('chartType', '类型分布', typeMap);
+        renderBarChart('chartStreet', '街道分布', streetMap);
+        document.getElementById('statsOverview').innerHTML =
+            '<div class="stat-card"><div class="stat-num">'+pavs.length+'</div><div class="stat-label">总亭子数</div></div>' +
+            '<div class="stat-card"><div class="stat-num" style="color:#e74c3c">'+(structMap?Object.keys(structMap).length:0)+'</div><div class="stat-label">结构类型</div></div>' +
+            '<div class="stat-card"><div class="stat-num" style="color:#2ecc71">'+(styleMap?Object.keys(styleMap).length:0)+'</div><div class="stat-label">风格类型</div></div>' +
+            '<div class="stat-card"><div class="stat-num" style="color:#f39c12">'+(streetMap?Object.keys(streetMap).length:0)+'</div><div class="stat-label">街道数量</div></div>' +
+            '<div class="stat-card"><div class="stat-num" style="color:#3498db">'+(typeMap?Object.keys(typeMap).length:0)+'</div><div class="stat-label">亭子类型</div></div>';
+        fetch('/pavilions/stats').then(function(r){return r.json()}).then(function(d){
+            if (d.success && d.data) {
+                var avgEl = document.createElement('div');
+                avgEl.className = 'stat-card';
+                avgEl.innerHTML = '<div class="stat-num" style="color:#9b59b6">'+(d.data.averageRating?d.data.averageRating.toFixed(1):'-')+'</div><div class="stat-label">平均评分</div>';
+                document.getElementById('statsOverview').appendChild(avgEl);
+            }
+        }).catch(function(){});
+    }
+
+    async function showCollectorInfo(pavilionId) {
+        try {
+            var pav = pavs.find(function(p){ return p.id === pavilionId; });
+            var resp = await fetch('/thousand-pavilions/' + pavilionId + '/collectors');
+            var data = await resp.json();
+            var colls = data.data || [];
+            var h = '<div style="padding:4px 0">';
+            h += '<b style="font-size:13px">' + (pav ? escHtml(pav.chineseName || pav.name) : '亭子#' + pavilionId) + '</b>';
+            h += '<p style="font-size:10px;color:#888;margin:2px 0">采集记录: ' + colls.length + '条</p>';
+            colls.forEach(function(c, i){
+                h += '<div style="background:rgba(255,255,255,.04);border-radius:4px;padding:7px 8px;margin:4px 0;font-size:11px">';
+                h += '<b>#' + (i+1) + ' ' + escHtml(c.collectorName || '未知') + '</b>';
+                h += '<table style="width:100%;font-size:10px;margin-top:3px;color:#bbb">';
+                h += '<tr><td style="color:#888">采集工具</td><td>' + escHtml(c.collectionTool || '-') + '</td></tr>';
+                h += '<tr><td style="color:#888">数据来源</td><td>' + escHtml(c.dataSource || '-') + '</td></tr>';
+                h += '<tr><td style="color:#888">采集时间</td><td>' + (c.collectionTime ? new Date(c.collectionTime).toLocaleString('zh-CN') : '-') + '</td></tr>';
+                if (c.accuracy != null) h += '<tr><td style="color:#888">精度/误差</td><td>' + c.accuracy + ' m</td></tr>';
+                if (c.notes) h += '<tr><td style="color:#888">备注</td><td>' + escHtml(c.notes) + '</td></tr>';
+                h += '</table></div>';
+            });
+            if (colls.length === 0) h += '<p style="color:#888;font-size:11px">暂无采集记录</p>';
+            h += '</div>';
+            document.getElementById('pavDetail').innerHTML = h;
+            document.getElementById('infoPanel').classList.add('visible');
+        } catch(e) {
+            toast('获取采集记录失败: ' + e.message, 'danger');
+        }
+    }
+    window.showCollectorInfo = showCollectorInfo;
+
+    // Refresh data table after loadPavilions
+    var _origLoadPavilions = loadPavilions;
+    loadPavilions = function() {
+        var r = _origLoadPavilions();
+        if (document.getElementById('dataView').classList.contains('show')) {
+            renderDataTable();
+            renderStats();
+        }
+        return r;
+    };
+
+    // ============ WKT Polygon Parser ============
+    function parseWktPolygon(wkt) {
+        if (!wkt) return [];
+        var rings = [];
+        var polyType = wkt.startsWith('MULTIPOLYGON') ? 'MULTIPOLYGON' : 'POLYGON';
+        var content = wkt.replace(/^(MULTIPOLYGON|POLYGON)\s*/, '');
+        // Extract ring groups: ((x y,x y,...),(x y,...))
+        var ringMatches = content.match(/\(\([^)]+\)\)/g) || content.match(/\([^)]+\)/g);
+        if (!ringMatches) {
+            // Try simpler parse
+            var clean = content.replace(/[()]/g, '').trim();
+            var pts = clean.split(',').map(function(p){
+                var xy = p.trim().split(/\s+/);
+                return [parseFloat(xy[1]), parseFloat(xy[0])];
+            }).filter(function(p){ return !isNaN(p[0]) && !isNaN(p[1]); });
+            return pts.length > 0 ? [{outer: pts, inner: []}] : [];
+        }
+        for (var i = 0; i < ringMatches.length; i++) {
+            var ring = ringMatches[i].replace(/[()]/g, '').trim();
+            var pts = ring.split(',').map(function(p){
+                var xy = p.trim().split(/\s+/);
+                return [parseFloat(xy[1]), parseFloat(xy[0])];
+            }).filter(function(p){ return !isNaN(p[0]) && !isNaN(p[1]); });
+            if (pts.length >= 3) {
+                if (i === 0 || ringMatches.length === 1) {
+                    rings.push({outer: pts, inner: []});
+                }
+            }
+        }
+        return rings;
+    }
+
+    // ============ Scenic Areas ============
+    async function loadScenicAreas() {
+        try {
+            var resp = await fetch('/scenic-areas/locations?includeCollectorCounts=true');
+            scenicAreas = await resp.json();
+            renderScenicTable();
+            renderScenicStats();
+            renderScenicPolygons();
+        } catch(e) { toast('加载景区失败: '+e.message, 'danger'); }
+    }
+
+    function renderScenicPolygons() {
+        if (!lmap) return;
+        if (scenicPolyLyr) lmap.removeLayer(scenicPolyLyr);
+        scenicPolyLyr = L.layerGroup();
+        scenicAreas.forEach(function(sa){
+            if (!sa.geomWkt) return;
+            var rings = parseWktPolygon(sa.geomWkt);
+            rings.forEach(function(ring){
+                if (!ring.outer || ring.outer.length < 3) return;
+                var coords = ring.outer.map(function(p){
+                    return leafCoord(p[1], p[0]);
+                });
+                var poly = L.polygon(coords, {
+                    color: '#27ae60', weight: 2, opacity: 0.8,
+                    fillColor: '#27ae60', fillOpacity: 0.25
+                });
+                poly.bindPopup('<b>'+escHtml(sa.chineseName||sa.name)+'</b><br>类型:'+(sa.areaType||'')+'<br>面积:'+(sa.areaSize||'')+' km²');
+                poly.on('click', function(){ showScenicDetail(sa); });
+                poly._wgsCoords = ring.outer.map(function(p){ return [p[0], p[1]]; });
+                scenicPolyLyr.addLayer(poly);
+            });
+        });
+        scenicPolyLyr.addTo(lmap);
+        toast('景区多边形: '+scenicAreas.length+'个', 'info');
+    }
+
+    function showScenicDetail(sa) {
+        var h = '<b style="font-size:13px">'+escHtml(sa.chineseName||sa.name)+'</b>';
+        h += '<table style="width:100%;font-size:11px;margin-top:4px;color:#bbb">';
+        h += '<tr><td style="color:#888">类型</td><td>'+escHtml(sa.areaType||'')+'</td></tr>';
+        h += '<tr><td style="color:#888">面积</td><td>'+(sa.areaSize||'')+' km²</td></tr>';
+        h += '<tr><td style="color:#888">评分</td><td>'+(sa.visitorRating||'')+'</td></tr>';
+        h += '<tr><td style="color:#888">采集记录</td><td><span class="collector-badge" style="cursor:pointer" onclick="showScenicCollectorInfo('+sa.id+')">'+(sa.collectorCount||0)+'条</span></td></tr>';
+        h += '</table>';
+        document.getElementById('pavDetail').innerHTML = h;
+        document.getElementById('infoPanel').classList.add('visible');
+    }
+
+    async function showScenicCollectorInfo(scenicAreaId) {
+        try {
+            var sa = scenicAreas.find(function(s){ return s.id === scenicAreaId; });
+            var resp = await fetch('/scenic-areas/'+scenicAreaId+'/collectors');
+            var data = await resp.json();
+            var colls = data.data || [];
+            var h = '<b style="font-size:13px">'+(sa?escHtml(sa.chineseName||sa.name):'景区#'+scenicAreaId)+'</b>';
+            h += '<p style="font-size:10px;color:#888;margin:2px 0">采集记录: '+colls.length+'条</p>';
+            colls.forEach(function(c,i){
+                h += '<div style="background:rgba(255,255,255,.04);border-radius:4px;padding:7px 8px;margin:4px 0;font-size:11px">';
+                h += '<b>#'+(i+1)+' '+escHtml(c.collectorName||'未知')+'</b>';
+                h += '<table style="width:100%;font-size:10px;margin-top:3px;color:#bbb">';
+                h += '<tr><td style="color:#888">工具</td><td>'+escHtml(c.collectionTool||'-')+'</td></tr>';
+                h += '<tr><td style="color:#888">来源</td><td>'+escHtml(c.dataSource||'-')+'</td></tr>';
+                h += '<tr><td style="color:#888">时间</td><td>'+(c.collectionTime?new Date(c.collectionTime).toLocaleString('zh-CN'):'-')+'</td></tr>';
+                if(c.accuracy!=null) h += '<tr><td style="color:#888">精度</td><td>'+c.accuracy+' m</td></tr>';
+                if(c.notes) h += '<tr><td style="color:#888">备注</td><td>'+escHtml(c.notes)+'</td></tr>';
+                h += '</table></div>';
+            });
+            if(colls.length===0) h += '<p style="color:#888;font-size:11px">暂无采集记录</p>';
+            document.getElementById('pavDetail').innerHTML = h;
+        } catch(e) { toast('获取采集记录失败: '+e.message, 'danger'); }
+    }
+
+    function renderScenicTable() {
+        var tbody = document.getElementById('scenicTblBody');
+        var q = (document.getElementById('scenicSearch')||{}).value||'';
+        var rows = scenicAreas.slice();
+        if (q) {
+            var lq = q.toLowerCase();
+            rows = rows.filter(function(s){
+                return (s.chineseName||'').toLowerCase().includes(lq) || (s.name||'').toLowerCase().includes(lq) || (s.areaType||'').toLowerCase().includes(lq) || (s.address||'').toLowerCase().includes(lq);
+            });
+        }
+        var h = '';
+        rows.forEach(function(sa){
+            h += '<tr class="'+(selScenic&&selScenic.id===sa.id?'row-sel':'')+'" onclick="selScenicRow('+sa.id+',event)">';
+            h += '<td class="col-id">'+sa.id+'</td>';
+            h += '<td class="col-name">'+escHtml(sa.chineseName||sa.name||'')+'</td>';
+            h += '<td class="col-type">'+escHtml(sa.areaType||'')+'</td>';
+            h += '<td class="col-area">'+(sa.areaSize!=null?sa.areaSize:'')+'</td>';
+            h += '<td class="col-loc" title="'+escHtml(sa.address||'')+'">'+escHtml(sa.address||'')+'</td>';
+            h += '<td class="col-rating">'+(sa.visitorRating!=null?sa.visitorRating:'')+'</td>';
+            h += '<td class="col-collector"><span class="collector-badge" onclick="event.stopPropagation();showScenicCollectorInfo('+sa.id+')">'+(sa.collectorCount||0)+'条</span></td>';
+            h += '</tr>';
+        });
+        tbody.innerHTML = h;
+        document.getElementById('scenicTotal').textContent = rows.length;
+    }
+    function selScenicRow(id, ev) {
+        var found = scenicAreas.find(function(s){ return s.id===id; });
+        if (!found) return;
+        selScenic = found; selAdmin = null;
+        updateScenicBtnState(); updateAdminBtnState();
+        renderScenicTable();
+    }
+    window.selScenicRow = selScenicRow;
+
+    function renderScenicStats() {
+        if (scenicAreas.length===0) return;
+        var typeMap = {};
+        scenicAreas.forEach(function(s){
+            var t = s.areaType||'未分类';
+            typeMap[t] = (typeMap[t]||0)+1;
+        });
+        var entries = Object.entries(typeMap).sort(function(a,b){ return b[1]-a[1]; });
+        var max = entries.length>0?entries[0][1]:1;
+        var h = '<h6>景区类型 ('+entries.length+'种)</h6>';
+        entries.slice(0,15).forEach(function(e){
+            var pct = Math.round(e[1]/max*100);
+            h += '<div class="stat-bar-row"><span class="bar-label">'+escHtml(e[0])+'</span><span class="bar-track"><span class="bar-fill" style="width:'+pct+'%"></span></span><span class="bar-cnt">'+e[1]+'</span></div>';
+        });
+        document.getElementById('scenicChartType').innerHTML = h;
+        document.getElementById('scenicStatsOverview').innerHTML =
+            '<div class="stat-card"><div class="stat-num">'+scenicAreas.length+'</div><div class="stat-label">总景区数</div></div>'+
+            '<div class="stat-card"><div class="stat-num" style="color:#27ae60">'+Object.keys(typeMap).length+'</div><div class="stat-label">景区类型</div></div>';
+    }
+
+    function filterScenicTable() { renderScenicTable(); }
+
+    function exportScenicCSV() {
+        var csv = '﻿ID,名称,类型,面积(km²),地址,评分,采集记录\n';
+        scenicAreas.forEach(function(s){
+            csv += [s.id,'"'+escHtml(s.chineseName||s.name||'')+'"','"'+escHtml(s.areaType||'')+'"',s.areaSize||'','"'+escHtml(s.address||'')+'"',s.visitorRating||'',s.collectorCount||0].join(',')+'\n';
+        });
+        var blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a'); a.href=url; a.download='scenic_area_data.csv';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast('已导出 '+scenicAreas.length+' 条景区数据', 'success');
+    }
+
+    function flyToScenic(id) {
+        var sa = scenicAreas.find(function(s){return s.id===id});
+        if (!sa) return;
+        showScenicDetail(sa);
+        if (!is3D && lmap && sa.latitude && sa.longitude) {
+            lmap.setView([sa.latitude, sa.longitude], 14);
+        }
+    }
+
+    // ============ Admin Divisions ============
+    async function loadAdminDivisions() {
+        try {
+            var resp = await fetch('/admin-divisions/locations?includeCollectorCounts=true');
+            adminDivisions = await resp.json();
+            if (adminTreeMode) renderAdminTree();
+            else renderAdminTable();
+            renderAdminStats();
+            renderAdminPolygons();
+        } catch(e) { toast('加载区划失败: '+e.message, 'danger'); }
+    }
+
+    function renderAdminPolygons() {
+        if (!lmap) return;
+        if (adminPolyLyr) lmap.removeLayer(adminPolyLyr);
+        adminPolyLyr = L.layerGroup();
+        var levelColors = {CITY:'#e74c3c', DISTRICT:'#3498db', COUNTY:'#f39c12', STREET:'#2ecc71', TOWN:'#9b59b6'};
+        adminDivisions.forEach(function(ad){
+            if (!ad.geomWkt) return;
+            var rings = parseWktPolygon(ad.geomWkt);
+            var color = levelColors[ad.adminLevel] || '#8e44ad';
+            rings.forEach(function(ring){
+                if (!ring.outer || ring.outer.length < 3) return;
+                var coords = ring.outer.map(function(p){
+                    return leafCoord(p[1], p[0]);
+                });
+                var poly = L.polygon(coords, {
+                    color: color, weight: 2, opacity: 0.8,
+                    fillColor: color, fillOpacity: 0.2, dashArray: '4,3'
+                });
+                poly.bindPopup('<b>'+escHtml(ad.chineseName||ad.name)+'</b><br>级别:'+(ad.adminLevel||'')+'<br>人口:'+(ad.population||'')+'<br>上级:'+(ad.parentName||'无'));
+                poly._wgsCoords = ring.outer.map(function(p){ return [p[0], p[1]]; });
+                adminPolyLyr.addLayer(poly);
+            });
+        });
+        adminPolyLyr.addTo(lmap);
+    }
+
+    function renderAdminTable() {
+        var tbody = document.getElementById('adminTblBody');
+        var q = (document.getElementById('adminSearch')||{}).value||'';
+        var rows = adminDivisions.slice();
+        if (q) {
+            var lq = q.toLowerCase();
+            rows = rows.filter(function(a){
+                return (a.chineseName||'').toLowerCase().includes(lq) || (a.name||'').toLowerCase().includes(lq) || (a.adminLevel||'').toLowerCase().includes(lq);
+            });
+        }
+        var h = '';
+        rows.forEach(function(ad){
+            h += '<tr class="'+(selAdmin&&selAdmin.id===ad.id?'row-sel':'')+'" onclick="selAdminRow('+ad.id+',event)">';
+            h += '<td class="col-name">'+escHtml(ad.chineseName||ad.name||'')+'</td>';
+            h += '<td class="col-level"><span class="level-badge '+(ad.adminLevel||'')+'">'+levelLabel(ad.adminLevel)+'</span></td>';
+            h += '<td class="col-loc">'+escHtml(ad.parentName||'无')+'</td>';
+            h += '<td class="col-area">'+(ad.areaSize!=null?ad.areaSize:'')+'</td>';
+            h += '<td class="col-rating">'+(ad.population!=null?ad.population:'')+'</td>';
+            h += '<td class="col-id">'+escHtml(ad.adminCode||'')+'</td>';
+            h += '<td class="col-collector"><span class="collector-badge" onclick="event.stopPropagation();showAdminCollectorInfo('+ad.id+')">'+(ad.collectorCount||0)+'条</span></td>';
+            h += '</tr>';
+        });
+        tbody.innerHTML = h;
+        document.getElementById('adminTotal').textContent = rows.length;
+    }
+    function selAdminRow(id, ev) {
+        var found = adminDivisions.find(function(a){ return a.id===id; });
+        if (!found) return;
+        selAdmin = found; selScenic = null;
+        updateScenicBtnState(); updateAdminBtnState();
+        renderAdminTable();
+    }
+    window.selAdminRow = selAdminRow;
+
+    function renderAdminTree() {
+        var tbody = document.getElementById('adminTblBody');
+        // Build tree from flat list
+        var roots = adminDivisions.filter(function(a){ return !a.parentId; });
+        var childrenMap = {};
+        adminDivisions.forEach(function(a){
+            if (a.parentId) {
+                if (!childrenMap[a.parentId]) childrenMap[a.parentId] = [];
+                childrenMap[a.parentId].push(a);
+            }
+        });
+        var h = '';
+        function renderNode(node, depth) {
+            var indent = '', i;
+            for (i=0;i<depth;i++) indent += '<span class="tree-indent"></span>';
+            var hasChildren = childrenMap[node.id] && childrenMap[node.id].length > 0;
+            var toggleId = 'treeToggle_'+node.id;
+            h += '<tr class="'+(depth>0?'tree-row-child':'')+'" data-admin-id="'+node.id+'" data-depth="'+depth+'">';
+            h += '<td class="col-name">'+indent+(hasChildren?'<span class="tree-toggle" id="'+toggleId+'" onclick="event.stopPropagation();toggleTreeNode('+node.id+')">▼</span>':'<span class="tree-indent"></span>')+escHtml(node.chineseName||node.name||'')+'</td>';
+            h += '<td class="col-level"><span class="level-badge '+(node.adminLevel||'')+'">'+levelLabel(node.adminLevel)+'</span></td>';
+            h += '<td class="col-loc">'+escHtml(node.parentName||'无')+'</td>';
+            h += '<td class="col-area">'+(node.areaSize!=null?node.areaSize:'')+'</td>';
+            h += '<td class="col-rating">'+(node.population!=null?node.population:'')+'</td>';
+            h += '<td class="col-id">'+escHtml(node.adminCode||'')+'</td>';
+            h += '<td class="col-collector"><span class="collector-badge" onclick="event.stopPropagation();showAdminCollectorInfo('+node.id+')">'+(node.collectorCount||0)+'条</span></td>';
+            h += '</tr>';
+            if (hasChildren) {
+                childrenMap[node.id].forEach(function(child){ renderNode(child, depth+1); });
+            }
+        }
+        roots.forEach(function(r){ renderNode(r, 0); });
+        tbody.innerHTML = h;
+        document.getElementById('adminTotal').textContent = adminDivisions.length;
+    }
+
+    function toggleAdminTree() {
+        adminTreeMode = !adminTreeMode;
+        var btn = document.querySelector('#adminToolbar button');
+        btn.textContent = adminTreeMode ? '列表' : '树形';
+        if (adminTreeMode) renderAdminTree();
+        else renderAdminTable();
+    }
+
+    function toggleTreeNode(nodeId) {
+        var depth = parseInt(document.querySelector('tr[data-admin-id="'+nodeId+'"]').getAttribute('data-depth'));
+        var rows = document.querySelectorAll('#adminTblBody tr');
+        var hiding = false, found = false;
+        var toggle = document.getElementById('treeToggle_'+nodeId);
+        var collapsed = toggle.textContent === '▼';
+        toggle.textContent = collapsed ? '▶' : '▼';
+        rows.forEach(function(row){
+            var rid = parseInt(row.getAttribute('data-admin-id'));
+            if (rid === nodeId) { found = true; return; }
+            if (found) {
+                var d = parseInt(row.getAttribute('data-depth'));
+                if (d <= depth) { found = false; return; }
+                if (collapsed) row.style.display = 'none';
+                else row.style.display = '';
+            }
+        });
+    }
+
+    function renderAdminStats() {
+        if (adminDivisions.length===0) return;
+        var levelMap = {};
+        adminDivisions.forEach(function(a){
+            var l = a.adminLevel||'未知';
+            levelMap[l] = (levelMap[l]||0)+1;
+        });
+        var entries = Object.entries(levelMap).sort(function(a,b){ return b[1]-a[1]; });
+        var max = entries.length>0?entries[0][1]:1;
+        var h = '<h6>层级分布</h6>';
+        entries.forEach(function(e){
+            var pct = Math.round(e[1]/max*100);
+            h += '<div class="stat-bar-row"><span class="bar-label">'+levelLabel(e[0])+'</span><span class="bar-track"><span class="bar-fill" style="width:'+pct+'%"></span></span><span class="bar-cnt">'+e[1]+'</span></div>';
+        });
+        document.getElementById('adminChartLevel').innerHTML = h;
+        var totalPop = adminDivisions.reduce(function(s,a){ return s+(a.population||0); }, 0);
+        document.getElementById('adminStatsOverview').innerHTML =
+            '<div class="stat-card"><div class="stat-num">'+adminDivisions.length+'</div><div class="stat-label">总区划数</div></div>'+
+            '<div class="stat-card"><div class="stat-num" style="color:#8e44ad">'+Object.keys(levelMap).length+'</div><div class="stat-label">层级类型</div></div>'+
+            '<div class="stat-card"><div class="stat-num" style="color:#f39c12">'+(totalPop>0?(totalPop/10000).toFixed(0)+'万':'-')+'</div><div class="stat-label">总人口</div></div>';
+    }
+
+    function levelLabel(lv) {
+        var map = {CITY:'市', DISTRICT:'区/县', COUNTY:'县', STREET:'街道', TOWN:'镇'};
+        return map[lv] || lv || '未知';
+    }
+
+    async function showAdminCollectorInfo(adminDivId) {
+        try {
+            var ad = adminDivisions.find(function(a){ return a.id === adminDivId; });
+            var resp = await fetch('/admin-divisions/'+adminDivId+'/collectors');
+            var data = await resp.json();
+            var colls = data.data || [];
+            var h = '<b style="font-size:13px">'+(ad?escHtml(ad.chineseName||ad.name):'区划#'+adminDivId)+'</b>';
+            h += '<p style="font-size:10px;color:#888;margin:2px 0">采集记录: '+colls.length+'条</p>';
+            colls.forEach(function(c,i){
+                h += '<div style="background:rgba(255,255,255,.04);border-radius:4px;padding:7px 8px;margin:4px 0;font-size:11px">';
+                h += '<b>#'+(i+1)+' '+escHtml(c.collectorName||'未知')+'</b>';
+                h += '<table style="width:100%;font-size:10px;margin-top:3px;color:#bbb">';
+                h += '<tr><td style="color:#888">工具</td><td>'+escHtml(c.collectionTool||'-')+'</td></tr>';
+                h += '<tr><td style="color:#888">来源</td><td>'+escHtml(c.dataSource||'-')+'</td></tr>';
+                h += '<tr><td style="color:#888">时间</td><td>'+(c.collectionTime?new Date(c.collectionTime).toLocaleString('zh-CN'):'-')+'</td></tr>';
+                if(c.accuracy!=null) h += '<tr><td style="color:#888">精度</td><td>'+c.accuracy+' m</td></tr>';
+                if(c.notes) h += '<tr><td style="color:#888">备注</td><td>'+escHtml(c.notes)+'</td></tr>';
+                h += '</table></div>';
+            });
+            if(colls.length===0) h += '<p style="color:#888;font-size:11px">暂无采集记录</p>';
+            document.getElementById('pavDetail').innerHTML = h;
+        } catch(e) { toast('获取采集记录失败: '+e.message, 'danger'); }
+    }
+
+    function filterAdminTable() {
+        if (adminTreeMode) renderAdminTree();
+        else renderAdminTable();
+    }
+
+    function exportAdminCSV() {
+        var csv = '﻿名称,级别,上级区划,面积(km²),人口,区划代码,采集记录\n';
+        adminDivisions.forEach(function(a){
+            csv += ['"'+escHtml(a.chineseName||a.name||'')+'"', levelLabel(a.adminLevel), '"'+escHtml(a.parentName||'')+'"', a.areaSize||'', a.population||'', '"'+escHtml(a.adminCode||'')+'"', a.collectorCount||0].join(',')+'\n';
+        });
+        var blob = new Blob([csv],{type:'text/csv;charset=utf-8'});
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a'); a.href=url; a.download='admin_division_data.csv';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast('已导出 '+adminDivisions.length+' 条区划数据', 'success');
+    }
+
+    function flyToAdmin(id) {
+        var ad = adminDivisions.find(function(a){return a.id===id});
+        if (!ad) return;
+        var h = '<b style="font-size:13px">'+escHtml(ad.chineseName||ad.name)+'</b>';
+        h += '<table style="width:100%;font-size:11px;margin-top:4px;color:#bbb">';
+        h += '<tr><td style="color:#888">级别</td><td>'+levelLabel(ad.adminLevel)+'</td></tr>';
+        h += '<tr><td style="color:#888">上级</td><td>'+escHtml(ad.parentName||'无')+'</td></tr>';
+        h += '<tr><td style="color:#888">人口</td><td>'+(ad.population||'')+'</td></tr>';
+        h += '<tr><td style="color:#888">采集记录</td><td><span class="collector-badge" style="cursor:pointer" onclick="showAdminCollectorInfo('+ad.id+')">'+(ad.collectorCount||0)+'条</span></td></tr>';
+        h += '</table>';
+        document.getElementById('pavDetail').innerHTML = h;
+        document.getElementById('infoPanel').classList.add('visible');
+        if (!is3D && lmap && ad.geomWkt) {
+            var rings = parseWktPolygon(ad.geomWkt);
+            if (rings.length>0 && rings[0].outer.length>0) {
+                var c = rings[0].outer[0];
+                lmap.setView(c, 13);
+            }
+        }
+    }
+
+    // ============ Layer Toggles ============
+    function toggleScenicLayer() {
+        var chk = document.getElementById('chkScenic');
+        if (!scenicPolyLyr) return;
+        if (chk.checked) { if (!lmap.hasLayer(scenicPolyLyr)) scenicPolyLyr.addTo(lmap); }
+        else lmap.removeLayer(scenicPolyLyr);
+    }
+    window.toggleScenicLayer = toggleScenicLayer;
+
+    function toggleAdminLayer() {
+        var chk = document.getElementById('chkAdmin');
+        if (!adminPolyLyr) return;
+        if (chk.checked) { if (!lmap.hasLayer(adminPolyLyr)) adminPolyLyr.addTo(lmap); }
+        else lmap.removeLayer(adminPolyLyr);
+    }
+    window.toggleAdminLayer = toggleAdminLayer;
+
+    window.exportScenicCSV = exportScenicCSV;
+    window.exportAdminCSV = exportAdminCSV;
+    window.filterScenicTable = filterScenicTable;
+    window.filterAdminTable = filterAdminTable;
+    window.showScenicCollectorInfo = showScenicCollectorInfo;
+    window.showAdminCollectorInfo = showAdminCollectorInfo;
+    window.flyToScenic = flyToScenic;
+    window.flyToAdmin = flyToAdmin;
+    window.toggleAdminTree = toggleAdminTree;
+    window.toggleTreeNode = toggleTreeNode;
+
+    // ==================== Scenic CRUD ====================
+    let scenicModal = null, adminModal = null, scenicEditTarget = null, adminEditTarget = null;
+    let selScenic = null, selAdmin = null;
+
+    function openScenicModal() {
+        scenicEditTarget = null; document.getElementById('scenicModalTitle').textContent = '添加景区';
+        document.getElementById('scenicForm').reset(); scenicModal.show();
+    }
+    window.openScenicModal = openScenicModal;
+
+    function editCurScenic() {
+        if (!selScenic) return;
+        scenicEditTarget = selScenic; document.getElementById('scenicModalTitle').textContent = '编辑景区';
+        document.getElementById('sfName').value = selScenic.chineseName || selScenic.name || '';
+        document.getElementById('sfType').value = selScenic.areaType || '风景区';
+        document.getElementById('sfDesc').value = selScenic.description || '';
+        document.getElementById('sfLng').value = selScenic.longitude || '';
+        document.getElementById('sfLat').value = selScenic.latitude || '';
+        document.getElementById('sfAddr').value = selScenic.address || '';
+        document.getElementById('sfPrice').value = selScenic.ticketPrice || 0;
+        document.getElementById('sfRating').value = selScenic.visitorRating || '';
+        document.getElementById('sfWkt').value = selScenic.geomWkt || '';
+        document.getElementById('sfOpen').checked = selScenic.isOpenToPublic !== false;
+        scenicModal.show();
+    }
+    window.editCurScenic = editCurScenic;
+
+    async function saveScenic() {
+        var body = {
+            name: document.getElementById('sfName').value.trim(),
+            chineseName: document.getElementById('sfName').value.trim(),
+            areaType: document.getElementById('sfType').value,
+            description: document.getElementById('sfDesc').value.trim() || null,
+            longitude: parseFloat(document.getElementById('sfLng').value) || null,
+            latitude: parseFloat(document.getElementById('sfLat').value) || null,
+            address: document.getElementById('sfAddr').value.trim() || null,
+            ticketPrice: parseFloat(document.getElementById('sfPrice').value) || 0,
+            visitorRating: parseFloat(document.getElementById('sfRating').value) || null,
+            geomWkt: document.getElementById('sfWkt').value.trim() || null,
+            isOpenToPublic: document.getElementById('sfOpen').checked
+        };
+        if (!body.name) { toast('请输入名称', 'error'); return; }
+        var url = '/scenic-areas', method = 'POST';
+        if (scenicEditTarget) { url += '/' + scenicEditTarget.id; method = 'PUT'; }
+        var resp = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (resp.ok) { toast(scenicEditTarget ? '景区更新成功' : '景区添加成功', 'success'); scenicModal.hide(); loadScenicAreas(); }
+        else { var err = await resp.json(); toast('保存失败: ' + (err.message || resp.status), 'error'); }
+    }
+    window.saveScenic = saveScenic;
+
+    async function delCurScenic() {
+        if (!selScenic) return;
+        if (!confirm('确定删除景区「' + (selScenic.chineseName || selScenic.name) + '」？')) return;
+        var resp = await fetch('/scenic-areas/' + selScenic.id, { method: 'DELETE' });
+        if (resp.ok) { toast('景区删除成功', 'success'); selScenic = null; updateScenicBtnState(); loadScenicAreas(); }
+        else { var err = await resp.json(); toast('删除失败: ' + (err.message || resp.status), 'error'); }
+    }
+    window.delCurScenic = delCurScenic;
+
+    function updateScenicBtnState() {
+        var disabled = !selScenic;
+        document.getElementById('scenicEditBtn').disabled = disabled;
+        document.getElementById('scenicDelBtn').disabled = disabled;
+    }
+
+    // ==================== Admin CRUD ====================
+
+    function openAdminModal() {
+        adminEditTarget = null; document.getElementById('adminModalTitle').textContent = '添加区划';
+        document.getElementById('adminForm').reset(); adminModal.show();
+    }
+    window.openAdminModal = openAdminModal;
+
+    function editCurAdmin() {
+        if (!selAdmin) return;
+        adminEditTarget = selAdmin; document.getElementById('adminModalTitle').textContent = '编辑区划';
+        document.getElementById('afName').value = selAdmin.chineseName || selAdmin.name || '';
+        document.getElementById('afLevel').value = selAdmin.adminLevel || 'STREET';
+        document.getElementById('afParentId').value = selAdmin.parentId || '';
+        document.getElementById('afCode').value = selAdmin.adminCode || '';
+        document.getElementById('afArea').value = selAdmin.areaSize || '';
+        document.getElementById('afPop').value = selAdmin.population || '';
+        document.getElementById('afWkt').value = selAdmin.geomWkt || '';
+        document.getElementById('afNotes').value = selAdmin.notes || '';
+        adminModal.show();
+    }
+    window.editCurAdmin = editCurAdmin;
+
+    async function saveAdmin() {
+        var body = {
+            name: document.getElementById('afName').value.trim(),
+            chineseName: document.getElementById('afName').value.trim(),
+            adminLevel: document.getElementById('afLevel').value,
+            parentId: document.getElementById('afParentId').value ? parseInt(document.getElementById('afParentId').value) : null,
+            adminCode: document.getElementById('afCode').value.trim() || null,
+            areaSize: parseFloat(document.getElementById('afArea').value) || null,
+            population: parseInt(document.getElementById('afPop').value) || null,
+            geomWkt: document.getElementById('afWkt').value.trim() || null,
+            notes: document.getElementById('afNotes').value.trim() || null
+        };
+        if (!body.name) { toast('请输入名称', 'error'); return; }
+        var url = '/admin-divisions', method = 'POST';
+        if (adminEditTarget) { url += '/' + adminEditTarget.id; method = 'PUT'; }
+        var resp = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        if (resp.ok) { toast(adminEditTarget ? '区划更新成功' : '区划添加成功', 'success'); adminModal.hide(); loadAdminDivisions(); }
+        else { var err = await resp.json(); toast('保存失败: ' + (err.message || resp.status), 'error'); }
+    }
+    window.saveAdmin = saveAdmin;
+
+    async function delCurAdmin() {
+        if (!selAdmin) return;
+        if (!confirm('确定删除区划「' + (selAdmin.chineseName || selAdmin.name) + '」？')) return;
+        var resp = await fetch('/admin-divisions/' + selAdmin.id, { method: 'DELETE' });
+        if (resp.ok) { toast('区划删除成功', 'success'); selAdmin = null; updateAdminBtnState(); loadAdminDivisions(); }
+        else { var err = await resp.json(); toast('删除失败: ' + (err.message || resp.status), 'error'); }
+    }
+    window.delCurAdmin = delCurAdmin;
+
+    function updateAdminBtnState() {
+        var disabled = !selAdmin;
+        document.getElementById('adminEditBtn').disabled = disabled;
+        document.getElementById('adminDelBtn').disabled = disabled;
+    }
+})();
+</script>
+</body>
+</html>

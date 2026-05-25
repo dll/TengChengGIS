@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#aed6f1"/>
+      <stop offset="100%" stop-color="#eaf2f8"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#sky)"/>
+  <ellipse cx="320" cy="310" rx="270" ry="38" fill="#82c082" opacity="0.4"/>
+  <ellipse cx="180" cy="230" rx="55" ry="65" fill="#e74c3c" opacity="0.3"/>
+  <ellipse cx="470" cy="225" rx="50" ry="60" fill="#c0392b" opacity="0.3"/>
+  <rect x="268" y="195" width="104" height="65" fill="#d4a017" rx="2"/>
+  <rect x="260" y="250" width="120" height="12" fill="#7d6608"/>
+  <rect x="303" y="208" width="34" height="52" fill="#8b7516" rx="3"/>
+  <polygon points="242,195 320,115 398,195" fill="#924d0e"/>
+  <polygon points="252,195 320,125 388,195" fill="#b8641a"/>
+  <text x="320" y="50" text-anchor="middle" font-family="Microsoft YaHei, SimHei, sans-serif" font-size="24" fill="#2c3e50">丰乐亭 - 欧阳修记</text>
+</svg>

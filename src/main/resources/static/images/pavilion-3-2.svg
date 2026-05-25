@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#abebc6"/>
+      <stop offset="100%" stop-color="#eafaf1"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#sky)"/>
+  <ellipse cx="320" cy="310" rx="275" ry="35" fill="#7cb87c" opacity="0.45"/>
+  <ellipse cx="100" cy="260" rx="80" ry="50" fill="#1e8449" opacity="0.2"/>
+  <rect x="275" y="195" width="90" height="62" fill="#2ecc71" rx="2"/>
+  <rect x="268" y="248" width="104" height="12" fill="#1e8449"/>
+  <rect x="303" y="210" width="34" height="47" fill="#1a7a3a" rx="3"/>
+  <polygon points="250,195 320,118 390,195" fill="#1e8449"/>
+  <polygon points="258,195 320,128 382,195" fill="#27ae60"/>
+  <text x="320" y="50" text-anchor="middle" font-family="Microsoft YaHei, SimHei, sans-serif" font-size="24" fill="#2c3e50">琅琊亭 - 环滁皆山</text>
+</svg>

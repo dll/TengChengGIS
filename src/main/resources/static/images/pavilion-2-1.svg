@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#85c1e9"/>
+      <stop offset="100%" stop-color="#d6eaf8"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#sky)"/>
+  <ellipse cx="320" cy="310" rx="260" ry="35" fill="#7cb87c" opacity="0.45"/>
+  <rect x="80" y="230" width="40" height="60" fill="#27ae60" rx="20" opacity="0.4"/>
+  <rect x="520" y="235" width="35" height="55" fill="#2ecc71" rx="18" opacity="0.4"/>
+  <rect x="260" y="185" width="120" height="75" fill="#b8860b" rx="3"/>
+  <rect x="253" y="250" width="134" height="14" fill="#8b6914"/>
+  <polygon points="235,185 320,100 405,185" fill="#8b4513"/>
+  <polygon points="245,185 320,110 395,185" fill="#a0522d"/>
+  <polygon points="250,175 320,140 390,175" fill="#cd853f" opacity="0.6"/>
+  <rect x="265" y="240" width="6" height="15" fill="#8b6914"/>
+  <rect x="300" y="240" width="6" height="15" fill="#8b6914"/>
+  <rect x="334" y="240" width="6" height="15" fill="#8b6914"/>
+  <rect x="369" y="240" width="6" height="15" fill="#8b6914"/>
+  <text x="320" y="55" text-anchor="middle" font-family="Microsoft YaHei, SimHei, sans-serif" font-size="26" fill="#2c3e50">丰乐亭 - 姐妹名亭</text>
+</svg>

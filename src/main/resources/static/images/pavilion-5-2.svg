@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#aed6f1"/>
+      <stop offset="100%" stop-color="#ebf5fb"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#sky)"/>
+  <ellipse cx="320" cy="310" rx="270" ry="35" fill="#7cb87c" opacity="0.45"/>
+  <ellipse cx="320" cy="280" rx="180" ry="40" fill="#58d68d" opacity="0.15"/>
+  <rect x="268" y="195" width="104" height="58" fill="#3498db" rx="2"/>
+  <rect x="260" y="245" width="120" height="12" fill="#2471a3"/>
+  <rect x="305" y="210" width="30" height="43" fill="#1a5276" rx="2"/>
+  <polygon points="244,195 320,125 396,195" fill="#1a5276"/>
+  <polygon points="252,195 320,133 388,195" fill="#2471a3"/>
+  <text x="320" y="50" text-anchor="middle" font-family="Microsoft YaHei, SimHei, sans-serif" font-size="24" fill="#2c3e50">城市公园亭 - 生态园林</text>
+</svg>

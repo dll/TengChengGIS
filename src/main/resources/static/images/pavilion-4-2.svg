@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7fb3d8"/>
+      <stop offset="100%" stop-color="#e8f0f8"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#sky)"/>
+  <ellipse cx="320" cy="310" rx="270" ry="33" fill="#7cb87c" opacity="0.45"/>
+  <circle cx="150" cy="240" r="30" fill="#5dade2" opacity="0.3"/>
+  <circle cx="490" cy="235" r="35" fill="#85c1e9" opacity="0.3"/>
+  <rect x="272" y="195" width="96" height="62" fill="#3498db" rx="2"/>
+  <rect x="265" y="248" width="110" height="12" fill="#2e86c1"/>
+  <rect x="305" y="212" width="30" height="45" fill="#1a5276" rx="2"/>
+  <polygon points="248,195 320,130 392,195" fill="#1a5276"/>
+  <polygon points="256,195 320,138 384,195" fill="#2471a3"/>
+  <text x="320" y="50" text-anchor="middle" font-family="Microsoft YaHei, SimHei, sans-serif" font-size="22" fill="#2c3e50">现代文化亭1 - 传承创新</text>
+</svg>

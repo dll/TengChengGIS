@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#a4bfef"/>
+      <stop offset="100%" stop-color="#e8f0ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#sky)"/>
+  <ellipse cx="320" cy="310" rx="280" ry="35" fill="#7cb87c" opacity="0.5"/>
+  <ellipse cx="200" cy="270" rx="150" ry="80" fill="#8fbc8f" opacity="0.3"/>
+  <ellipse cx="450" cy="265" rx="160" ry="85" fill="#6b9e6b" opacity="0.3"/>
+  <rect x="270" y="190" width="100" height="70" fill="#c0392b" rx="3"/>
+  <rect x="260" y="250" width="120" height="15" fill="#a0522d"/>
+  <rect x="275" y="200" width="8" height="60" fill="#8b0000"/>
+  <rect x="357" y="200" width="8" height="60" fill="#8b0000"/>
+  <polygon points="240,190 320,120 400,190" fill="#8b0000"/>
+  <polygon points="250,190 320,130 390,190" fill="#a52a2a"/>
+  <polygon points="240,190 220,178 250,185" fill="#8b0000"/>
+  <polygon points="400,190 420,178 390,185" fill="#8b0000"/>
+  <text x="320" y="55" text-anchor="middle" font-family="Microsoft YaHei, SimHei, sans-serif" font-size="26" fill="#2c3e50">醉翁亭 - 天下第一亭</text>
+</svg>
