@@ -101,6 +101,38 @@ public class AuthController {
         public void setPassword(String password) { this.password = password; }
     }
 
+    public static class ChangePasswordRequest {
+        private String oldPassword;
+        private String newPassword;
+
+        public String getOldPassword() { return oldPassword; }
+        public void setOldPassword(String oldPassword) { this.oldPassword = oldPassword; }
+        public String getNewPassword() { return newPassword; }
+        public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Map<String, Object>> changePassword(
+            Authentication auth, @RequestBody ChangePasswordRequest request) {
+        Map<String, Object> resp = new LinkedHashMap<>();
+        if (auth == null || !auth.isAuthenticated() || "anonymousUser".equals(String.valueOf(auth.getPrincipal()))) {
+            resp.put("success", false);
+            resp.put("message", "未登录");
+            return ResponseEntity.status(401).body(resp);
+        }
+        try {
+            String username = String.valueOf(auth.getPrincipal());
+            userService.changePassword(username, request.getOldPassword(), request.getNewPassword());
+            resp.put("success", true);
+            resp.put("message", "密码修改成功");
+            return ResponseEntity.ok(resp);
+        } catch (com.tingchenggis.tingcheng.exception.BusinessException e) {
+            resp.put("success", false);
+            resp.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(resp);
+        }
+    }
+
     public static class RegisterRequest {
         private String username;
         private String password;

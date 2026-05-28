@@ -17,8 +17,8 @@ public class JwtUtil {
     private final SecretKey key;
     private final long expirationMs;
 
-    public JwtUtil(@Value("${tingcheng-jwt.secret:TingChengGIS-JWT-Secret-Key-2024-Chuzhou-Anhui-China}") String secret,
-                   @Value("${tingcheng-jwt.expiration-ms:86400000}") long expirationMs) {
+    public JwtUtil(@Value("${tingcheng.jwt.secret:TingChengGIS-JWT-Secret-Key-2024-Chuzhou-Anhui-China}") String secret,
+                   @Value("${tingcheng.jwt.expiration-ms:86400000}") long expirationMs) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.expirationMs = expirationMs;
     }

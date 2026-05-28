@@ -17,4 +17,7 @@ public interface AppUserService {
 
     /** 不存在则创建（用于种子账号），返回是否新建 */
     boolean ensureUser(String username, String rawPassword, String role, String displayName);
+
+    /** 修改密码：校验旧密码 → 加密存储新密码 */
+    void changePassword(String username, String oldPassword, String newPassword);
 }

@@ -480,7 +480,7 @@ mvn spring-boot:run
 | 公开接口 | GET `/thousand-pavilions/locations` | 数组（数据为空时返回 `[]`） |
 | 数据导入 | POST `/thousand-pavilions/import`（multipart 文件） | 返回 `PavilionImportResult` |
 
-> 注：首次启动时 `DataInitializer` 会日志提示通过 `POST /thousand-pavilions/import` 导入 `data/凉亭汇总表.xlsx`（228 条），不导入则地图空白。
+> 注：首次启动时 `DataInitializer` 会日志提示通过 `POST /thousand-pavilions/import` 导入 `data/千亭.xlsx`（228 条），不导入则地图空白。
 
 ---
 

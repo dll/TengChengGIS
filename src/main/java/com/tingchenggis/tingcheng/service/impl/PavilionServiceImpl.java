@@ -1,6 +1,9 @@
 package com.tingchenggis.tingcheng.service.impl;
 
 import com.tingchenggis.tingcheng.entity.Pavilion;
+import com.tingchenggis.tingcheng.entity.PavilionCollector;
+import com.tingchenggis.tingcheng.exception.BusinessException;
+import com.tingchenggis.tingcheng.exception.NotFoundException;
 import com.tingchenggis.tingcheng.repository.PavilionRepository;
 import com.tingchenggis.tingcheng.service.PavilionCollectorService;
 import com.tingchenggis.tingcheng.service.PavilionService;
@@ -90,7 +93,7 @@ public class PavilionServiceImpl implements PavilionService {
 
         Optional<Pavilion> existingPavilionOpt = pavilionRepository.findById(id);
         if (!existingPavilionOpt.isPresent()) {
-            throw new RuntimeException("Pavilion not found with id: " + id);
+            throw new NotFoundException("Pavilion not found with id: " + id);
         }
 
         Pavilion existingPavilion = existingPavilionOpt.get();
@@ -125,7 +128,7 @@ public class PavilionServiceImpl implements PavilionService {
     public void deletePavilion(Long id) {
         logger.info("Deleting pavilion with ID: {}", id);
         if (!pavilionRepository.existsById(id)) {
-            throw new RuntimeException("Pavilion not found with id: " + id);
+            throw new NotFoundException("Pavilion not found with id: " + id);
         }
         collectorService.deleteCollectorsByPavilionId(id);
         pavilionRepository.deleteById(id);

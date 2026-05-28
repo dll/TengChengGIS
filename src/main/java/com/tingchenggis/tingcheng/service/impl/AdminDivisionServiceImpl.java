@@ -1,6 +1,7 @@
 package com.tingchenggis.tingcheng.service.impl;
 
 import com.tingchenggis.tingcheng.entity.AdminDivision;
+import com.tingchenggis.tingcheng.exception.NotFoundException;
 import com.tingchenggis.tingcheng.repository.AdminDivisionRepository;
 import com.tingchenggis.tingcheng.service.AdminDivisionCollectorService;
 import com.tingchenggis.tingcheng.service.AdminDivisionService;
@@ -11,7 +12,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -72,7 +77,7 @@ public class AdminDivisionServiceImpl implements AdminDivisionService {
     @Override
     public void deleteAdminDivision(Long id) {
         if (!adminDivisionRepository.existsById(id))
-            throw new RuntimeException("AdminDivision not found: " + id);
+            throw new NotFoundException("AdminDivision not found: " + id);
         collectorService.deleteCollectorsByAdminDivisionId(id);
         adminDivisionRepository.deleteById(id);
     }

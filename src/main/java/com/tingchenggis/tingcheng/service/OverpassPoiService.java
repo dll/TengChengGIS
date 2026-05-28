@@ -2,6 +2,7 @@ package com.tingchenggis.tingcheng.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tingchenggis.tingcheng.exception.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -10,7 +11,13 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @Service
 public class OverpassPoiService {
@@ -81,7 +88,7 @@ public class OverpassPoiService {
         conn.setRequestProperty("User-Agent", "TingChengGIS/1.0");
         int code = conn.getResponseCode();
         if (code != 200) {
-            throw new RuntimeException("Overpass API returned HTTP " + code);
+            throw new BusinessException("Overpass API returned HTTP " + code);
         }
         return objectMapper.readTree(conn.getInputStream());
     }

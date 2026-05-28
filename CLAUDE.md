@@ -18,7 +18,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Bootstrap data
 
-`data/凉亭汇总表.xlsx` (228 rows) is the canonical source. On a fresh DB, `DataInitializer` logs a hint to import it via `POST /thousand-pavilions/import` (multipart). Default seeded accounts: admin `419116` / user `206004` (password = username). Pavilion data must be imported before most map/route features work — there is no SQL seeding.
+`data/千亭.xlsx` (228 rows) is the canonical source. On a fresh DB, `DataInitializer` logs a hint to import it via `POST /thousand-pavilions/import` (multipart). Default seeded accounts: admin `419116` / user `206004` (password = username). Pavilion data must be imported before most map/route features work — there is no SQL seeding.
 
 ## Architecture
 

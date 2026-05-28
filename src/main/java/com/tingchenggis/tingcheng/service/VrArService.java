@@ -2,11 +2,17 @@ package com.tingchenggis.tingcheng.service;
 
 import com.tingchenggis.tingcheng.entity.Pavilion;
 import com.tingchenggis.tingcheng.repository.PavilionRepository;
+import com.tingchenggis.tingcheng.util.GeoUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class VrArService {
@@ -81,7 +87,7 @@ public class VrArService {
             marker.put("latitude", poi.get("latitude"));
             marker.put("longitude", poi.get("longitude"));
             marker.put("distance", poi.get("distance"));
-            marker.put("bearing", computeBearing(
+            marker.put("bearing", GeoUtils.computeBearing(
                 p.getLatitude() != null ? p.getLatitude() : 32.3,
                 p.getLongitude() != null ? p.getLongitude() : 118.3,
                 (double) poi.get("latitude"),
@@ -231,14 +237,4 @@ public class VrArService {
         return result;
     }
 
-    private String computeBearing(double fromLat, double fromLng, double toLat, double toLng) {
-        double dLng = Math.toRadians(toLng - fromLng);
-        double y = Math.sin(dLng) * Math.cos(Math.toRadians(toLat));
-        double x = Math.cos(Math.toRadians(fromLat)) * Math.sin(Math.toRadians(toLat))
-            - Math.sin(Math.toRadians(fromLat)) * Math.cos(Math.toRadians(toLat)) * Math.cos(dLng);
-        double brng = Math.toDegrees(Math.atan2(y, x));
-        brng = (brng + 360) % 360;
-        String[] dirs = {"北", "东北", "东", "东南", "南", "西南", "西", "西北"};
-        return dirs[(int) Math.round(brng / 45.0) % 8];
-    }
 }

@@ -5,7 +5,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class NavigationService {
@@ -98,13 +102,13 @@ public class NavigationService {
         result.put("toLng", toLng);
         result.put("toLat", toLat);
         result.put("mode", mode != null ? mode : "WALKING");
-        result.put("totalDistanceKm", Math.round(distance * 100.0) / 100.0);
+        result.put("totalDistanceKm", GeoUtils.round2(distance));
         result.put("totalDurationSeconds", Math.round(durationSec));
         result.put("totalDurationMinutes", (int) Math.ceil(durationSec / 60.0));
         result.put("estimatedArrival", System.currentTimeMillis() + (long) (durationSec * 1000));
         result.put("isFallback", true);
 
-        String bearing = computeBearing(fromLat, fromLng, toLat, toLng);
+        String bearing = GeoUtils.computeBearing(fromLat, fromLng, toLat, toLng);
         List<Map<String, Object>> steps = new ArrayList<>();
         Map<String, Object> step = new LinkedHashMap<>();
         step.put("stepNumber", 1);
@@ -132,16 +136,4 @@ public class NavigationService {
         return result;
     }
 
-    private String computeBearing(double fromLat, double fromLng, double toLat, double toLng) {
-        double dLng = Math.toRadians(toLng - fromLng);
-        double y = Math.sin(dLng) * Math.cos(Math.toRadians(toLat));
-        double x = Math.cos(Math.toRadians(fromLat)) * Math.sin(Math.toRadians(toLat))
-            - Math.sin(Math.toRadians(fromLat)) * Math.cos(Math.toRadians(toLat)) * Math.cos(dLng);
-        double brng = Math.toDegrees(Math.atan2(y, x));
-        brng = (brng + 360) % 360;
-
-        String[] dirs = {"北", "东北", "东", "东南", "南", "西南", "西", "西北"};
-        int idx = (int) Math.round(brng / 45.0) % 8;
-        return dirs[idx];
-    }
 }

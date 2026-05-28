@@ -2,6 +2,7 @@ package com.tingchenggis.tingcheng.service.impl;
 
 import com.tingchenggis.tingcheng.entity.Pavilion;
 import com.tingchenggis.tingcheng.entity.TransportRoute;
+import com.tingchenggis.tingcheng.exception.NotFoundException;
 import com.tingchenggis.tingcheng.repository.PavilionRepository;
 import com.tingchenggis.tingcheng.repository.TransportRouteRepository;
 import com.tingchenggis.tingcheng.service.Objective;
@@ -19,7 +20,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * 交通线服务实现 — 多级道路网络 + TSP优化求解
@@ -140,7 +148,7 @@ public class TransportRouteServiceImpl implements TransportRouteService {
     @Transactional
     public TransportRoute updateRoute(Long id, TransportRoute route) {
         Optional<TransportRoute> existing = transportRouteRepository.findById(id);
-        if (existing.isEmpty()) throw new RuntimeException("交通线不存在");
+        if (existing.isEmpty()) throw new NotFoundException("交通线不存在");
         TransportRoute er = existing.get();
         if (route.getRouteName() != null) er.setRouteName(route.getRouteName());
         if (route.getRouteType() != null) er.setRouteType(route.getRouteType());

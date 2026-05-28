@@ -2,6 +2,7 @@ package com.tingchenggis.tingcheng.service.impl;
 
 import com.tingchenggis.tingcheng.entity.AppUser;
 import com.tingchenggis.tingcheng.repository.AppUserRepository;
+import com.tingchenggis.tingcheng.exception.BusinessException;
 import com.tingchenggis.tingcheng.service.AppUserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +56,24 @@ public class AppUserServiceImpl implements AppUserService {
     @Transactional(readOnly = true)
     public Optional<AppUser> findByUsername(String username) {
         return userRepository.findByUsername(username);
+    }
+
+    @Override
+    public void changePassword(String username, String oldPassword, String newPassword) {
+        if (username == null || oldPassword == null || newPassword == null) {
+            throw new BusinessException("参数不能为空");
+        }
+        if (newPassword.length() < 4) {
+            throw new BusinessException("新密码长度不能少于4位");
+        }
+        AppUser user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new BusinessException("用户不存在"));
+        if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
+            throw new BusinessException("旧密码错误");
+        }
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        logger.info("密码修改成功: username={}", username);
     }
 
     @Override

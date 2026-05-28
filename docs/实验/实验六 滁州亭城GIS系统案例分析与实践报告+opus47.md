@@ -321,7 +321,7 @@ java -jar target/tingchenggis-1.0.0.jar
 `DataInitializer.seedPavilionsHint` 会日志输出：
 
 > 当前无亭子数据，请通过 POST /thousand-pavilions/import 导入 228 条数据
-> 文件: data/凉亭汇总表.xlsx
+> 文件: data/千亭.xlsx
 
 实际仓库 `data/` 目录下文件名为 `千亭.xlsx`（与日志提示文件名略有差异，需要根据实际文件名调整）。
 

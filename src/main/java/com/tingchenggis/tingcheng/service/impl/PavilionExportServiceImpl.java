@@ -4,11 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tingchenggis.tingcheng.entity.Pavilion;
+import com.tingchenggis.tingcheng.exception.BusinessException;
 import com.tingchenggis.tingcheng.service.PavilionExportService;
 import com.tingchenggis.tingcheng.service.PavilionService;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -17,6 +15,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 @Service
 public class PavilionExportServiceImpl implements PavilionExportService {
@@ -71,7 +73,7 @@ public class PavilionExportServiceImpl implements PavilionExportService {
             logger.info("GeoJSON export: {} features", features.size());
             return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsBytes(fc);
         } catch (Exception e) {
-            throw new RuntimeException("GeoJSON export failed: " + e.getMessage(), e);
+            throw new BusinessException("GeoJSON export failed: " + e.getMessage(), e);
         }
     }
 
@@ -101,7 +103,8 @@ public class PavilionExportServiceImpl implements PavilionExportService {
                 return bos.toByteArray();
             }
         } catch (Exception e) {
-            throw new RuntimeException("Excel export failed: " + e.getMessage(), e);
+throw new BusinessException("Excel export failed: " + e.getMessage(), e);
+
         }
     }
 
@@ -123,7 +126,8 @@ public class PavilionExportServiceImpl implements PavilionExportService {
             w.flush();
             return bos.toByteArray();
         } catch (Exception e) {
-            throw new RuntimeException("CSV export failed: " + e.getMessage(), e);
+throw new BusinessException("CSV export failed: " + e.getMessage(), e);
+
         }
     }
 
@@ -136,7 +140,8 @@ public class PavilionExportServiceImpl implements PavilionExportService {
             wb.write(bos);
             return bos.toByteArray();
         } catch (Exception e) {
-            throw new RuntimeException("Template export failed: " + e.getMessage(), e);
+throw new BusinessException("Template export failed: " + e.getMessage(), e);
+
         }
     }
 
@@ -150,7 +155,7 @@ public class PavilionExportServiceImpl implements PavilionExportService {
             w.flush();
             return bos.toByteArray();
         } catch (Exception e) {
-            throw new RuntimeException("CSV template export failed: " + e.getMessage(), e);
+            throw new BusinessException("CSV template export failed: " + e.getMessage(), e);
         }
     }
 
