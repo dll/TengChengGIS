@@ -56,6 +56,10 @@ public class RoutePlan {
     @Column(name = "notes", length = 500)
     private String notes;
 
+    /** GIF 文件路径（相对于项目根目录） */
+    @Column(name = "gif_path", length = 500)
+    private String gifPath;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
@@ -101,6 +105,8 @@ public class RoutePlan {
     public void setPavilionCount(Integer pavilionCount) { this.pavilionCount = pavilionCount; }
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+    public String getGifPath() { return gifPath; }
+    public void setGifPath(String gifPath) { this.gifPath = gifPath; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

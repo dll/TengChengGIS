@@ -2,6 +2,8 @@ package com.tingchenggis.tingcheng.service.impl;
 
 import com.tingchenggis.tingcheng.entity.Pavilion;
 import com.tingchenggis.tingcheng.repository.PavilionRepository;
+import com.tingchenggis.tingcheng.service.OverpassPoiService;
+import com.tingchenggis.tingcheng.service.VrArService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,7 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -20,13 +22,19 @@ class ThousandPavilionsServiceImplTest {
     @Mock
     private PavilionRepository pavilionRepository;
 
+    @Mock
+    private OverpassPoiService overpassPoiService;
+
+    @Mock
+    private VrArService vrArService;
+
     private ThousandPavilionsServiceImpl service;
 
     private Pavilion p1, p2, p3;
 
     @BeforeEach
     void setUp() {
-        service = new ThousandPavilionsServiceImpl(pavilionRepository);
+        service = new ThousandPavilionsServiceImpl(pavilionRepository, overpassPoiService, vrArService);
 
         p1 = new Pavilion("p1", "亭一", null, null, 118.3, 32.3, "HISTORICAL");
         p1.setId(1L);
@@ -167,17 +175,26 @@ class ThousandPavilionsServiceImplTest {
 
     @Test
     void getVRExperience_found() {
-        when(pavilionRepository.findById(1L)).thenReturn(Optional.of(p1));
+        Map<String, Object> mockVr = new LinkedHashMap<>();
+        mockVr.put("pavilionId", 1L);
+        mockVr.put("pavilionName", "亭一");
+        mockVr.put("hasVR", true);
+        mockVr.put("scenes", List.of());
+        mockVr.put("features", List.of());
+        when(vrArService.getVrExperience(1L)).thenReturn(mockVr);
 
         Map<String, Object> vr = service.getVRExperience(1L);
 
         assertEquals(1L, vr.get("pavilionId"));
         assertEquals(true, vr.get("hasVR"));
+        assertNotNull(vr.get("scenes"));
     }
 
     @Test
     void getVRExperience_notFound() {
-        when(pavilionRepository.findById(99L)).thenReturn(Optional.empty());
+        Map<String, Object> mockVr = new LinkedHashMap<>();
+        mockVr.put("error", "亭子不存在");
+        when(vrArService.getVrExperience(99L)).thenReturn(mockVr);
 
         Map<String, Object> vr = service.getVRExperience(99L);
 
@@ -187,8 +204,6 @@ class ThousandPavilionsServiceImplTest {
     @Test
     void getAccessibilityMatrix() {
         when(pavilionRepository.findAll()).thenReturn(List.of(p1, p2));
-        when(pavilionRepository.findById(1L)).thenReturn(Optional.of(p1));
-        when(pavilionRepository.findById(2L)).thenReturn(Optional.of(p2));
         double[][] matrix = service.getAccessibilityMatrix();
         assertEquals(2, matrix.length);
         assertEquals(2, matrix[0].length);
@@ -206,5 +221,63 @@ class ThousandPavilionsServiceImplTest {
 
         assertEquals("test", share.get("routeName"));
         assertNotNull(share.get("shareUrl"));
+    }
+
+    @Test
+    void getNearbyFacilities_pavilionNotFound() {
+        when(pavilionRepository.findById(99L)).thenReturn(Optional.empty());
+
+        Map<String, Object> result = service.getNearbyFacilities(99L, 1.0);
+
+        assertNotNull(result.get("error"));
+    }
+
+    @Test
+    void getNearbyFacilities_missingCoords() {
+        Pavilion noCoord = new Pavilion();
+        noCoord.setId(99L);
+        when(pavilionRepository.findById(99L)).thenReturn(Optional.of(noCoord));
+
+        Map<String, Object> result = service.getNearbyFacilities(99L, 1.0);
+
+        assertNotNull(result.get("error"));
+    }
+
+    @Test
+    void getNearbyFacilities_fromOverpass() {
+        when(pavilionRepository.findById(1L)).thenReturn(Optional.of(p1));
+
+        List<Map<String, Object>> mockPois = new ArrayList<>();
+        Map<String, Object> poi = new LinkedHashMap<>();
+        poi.put("name", "停车场"); poi.put("category", "parking");
+        poi.put("latitude", 32.315); poi.put("longitude", 118.320);
+        poi.put("distance", 0.5);
+        mockPois.add(poi);
+
+        when(overpassPoiService.queryNearbyPois(anyDouble(), anyDouble(), anyDouble()))
+            .thenReturn(mockPois);
+
+        Map<String, Object> result = service.getNearbyFacilities(1L, 1.0);
+
+        assertEquals("亭一", result.get("pavilion"));
+        assertEquals(118.3, (double) result.get("centerLongitude"), 1e-10);
+        assertEquals(1.0, (double) result.get("searchRadius"), 1e-10);
+        assertNotNull(result.get("facilities"));
+        List<?> facilities = (List<?>) result.get("facilities");
+        assertEquals(1, facilities.size());
+    }
+
+    @Test
+    void getNearbyFacilities_fallbackWhenOverpassEmpty() {
+        when(pavilionRepository.findById(1L)).thenReturn(Optional.of(p1));
+
+        when(overpassPoiService.queryNearbyPois(anyDouble(), anyDouble(), anyDouble()))
+            .thenReturn(Collections.emptyList());
+
+        Map<String, Object> result = service.getNearbyFacilities(1L, 1.0);
+
+        assertNotNull(result.get("facilities"));
+        List<?> facilities = (List<?>) result.get("facilities");
+        assertTrue(facilities.size() > 0);
     }
 }

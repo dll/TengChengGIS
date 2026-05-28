@@ -5,7 +5,7 @@ server:
 
 spring:
   application:
-    name: tingchenggis-tingcheng
+    name: tingchenggis
 
   # 使用H2开发数据库
   profiles:
@@ -94,17 +94,16 @@ tingcheng:
     - historical: "历史文化亭"
     - modern: "现代景观亭"
     - cultural: "文化主题亭"
-  # AI配置
-  ai:
-    enabled: true
-    model: "gpt-3.5-turbo"
 
-# Spring AI配置（可选，需要有效的API密钥）
-# spring:
-#   ai:
-#     openai:
-#       api-key: ${OPENAI_API_KEY:your-api-key-here}
-#       chat:
-#         options:
-#           temperature: 0.7
-#           max-tokens: 1000
+  # AI配置 - 支持多模型切换
+  ai:
+    active-provider: deepseek
+    openai-api-key: ""
+    openai-api-url: "https://api.openai.com/v1/chat/completions"
+    openai-model: "gpt-3.5-turbo"
+    deepseek-api-key: "sk-717ef9146311424daa2fbead8ed4682b"
+    deepseek-api-url: "https://api.deepseek.com/v1/chat/completions"
+    deepseek-model: "deepseek-v4-flash"
+    zhipu-api-key: "5dc44da8d9dd4c28bf38cde316950f1e.nNIf7AXWrJXIcSyQ"
+    zhipu-api-url: "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+    zhipu-model: "glm-4"

@@ -21,6 +21,10 @@ public interface AdminDivisionRepository extends JpaRepository<AdminDivision, Lo
 
     long countByParentId(Long parentId);
 
-    @Query(value = "SELECT * FROM admin_divisions WHERE ST_Intersects(ST_GeomFromText(geom_wkt), ST_GeomFromText(:wktText))", nativeQuery = true)
-    List<AdminDivision> findByGeographicRange(@Param("wktText") String wktText);
+    @Query("SELECT a FROM AdminDivision a WHERE a.geomWkt IS NOT NULL")
+    List<AdminDivision> findAllWithGeometry();
+
+    @Query("SELECT a FROM AdminDivision a WHERE a.longitude BETWEEN :minLng AND :maxLng AND a.latitude BETWEEN :minLat AND :maxLat")
+    List<AdminDivision> findByGeographicRange(@Param("minLng") Double minLng, @Param("maxLng") Double maxLng,
+                                              @Param("minLat") Double minLat, @Param("maxLat") Double maxLat);
 }

@@ -7,6 +7,7 @@ public class OsrmRoute {
     private double duration;
     private List<double[]> coordinates;
     private String geometryWkt;
+    private List<NavigationStep> steps;
 
     public double getDistance() { return distance; }
     public void setDistance(double distance) { this.distance = distance; }
@@ -16,4 +17,6 @@ public class OsrmRoute {
     public void setCoordinates(List<double[]> coordinates) { this.coordinates = coordinates; }
     public String getGeometryWkt() { return geometryWkt; }
     public void setGeometryWkt(String geometryWkt) { this.geometryWkt = geometryWkt; }
+    public List<NavigationStep> getSteps() { return steps; }
+    public void setSteps(List<NavigationStep> steps) { this.steps = steps; }
 }

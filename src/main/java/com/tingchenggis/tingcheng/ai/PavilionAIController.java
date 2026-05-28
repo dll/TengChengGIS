@@ -1,6 +1,5 @@
 package com.tingchenggis.tingcheng.ai;
 
-import com.tingchenggis.tingcheng.service.PavilionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -25,12 +24,10 @@ public class PavilionAIController {
 
     private static final Logger logger = LoggerFactory.getLogger(PavilionAIController.class);
 
-    private final PavilionAIService pavilionAIService;
-    private final PavilionService pavilionService;
+    private final AiService aiService;
 
-    public PavilionAIController(PavilionAIService pavilionAIService, PavilionService pavilionService) {
-        this.pavilionAIService = pavilionAIService;
-        this.pavilionService = pavilionService;
+    public PavilionAIController(AiService aiService) {
+        this.aiService = aiService;
     }
 
     /**
@@ -47,7 +44,7 @@ public class PavilionAIController {
         try {
             logger.info("Generating culture introduction for pavilion: {} at {}", pavilionName, location);
             
-            String introduction = pavilionAIService.generateCulturalIntroduction(pavilionName, location);
+            String introduction = aiService.generateCulturalIntroduction(pavilionName, location);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -79,7 +76,7 @@ public class PavilionAIController {
         try {
             logger.info("Generating historical story for pavilion: {} built in {}", pavilionName, constructionYear);
             
-            String story = pavilionAIService.generateHistoricalStory(pavilionName, constructionYear);
+            String story = aiService.generateHistoricalStory(pavilionName, constructionYear);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -109,7 +106,7 @@ public class PavilionAIController {
             String question = requestBody.get("question");
             logger.info("Processing AI question: {}", question);
             
-            String answer = pavilionAIService.answerQuestion(question);
+            String answer = aiService.answerQuestion(question);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -146,7 +143,7 @@ public class PavilionAIController {
             
             logger.info("Generating tourism advice for pavilions: {} in {} for {}", pavilions, season, duration);
             
-            String advice = pavilionAIService.generateTourismAdvice(pavilions, season, duration);
+            String advice = aiService.generateTourismAdvice(pavilions, season, duration);
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -174,24 +171,11 @@ public class PavilionAIController {
         try {
             logger.info("Generating culture overview for Chuzhou Tingcheng");
             
-            StringBuilder overview = new StringBuilder();
-            overview.append("【滁州'亭城'文化概览】\n\n");
-            overview.append("滁州，位于安徽省东部，是一座拥有悠久历史的文化名城。因其深厚的'亭文化'积淀，素有'亭城'之美誉。\n\n");
-            overview.append("一、历史渊源：\n");
-            overview.append("滁州的'亭文化'始于北宋，因欧阳修任滁州知州时写下千古名篇《醉翁亭记》而声名远播。文中'醉翁之意不在酒，在乎山水之间也'的名句，使得醉翁亭成为'天下第一亭'。\n\n");
-            overview.append("二、代表亭子：\n");
-            overview.append("1. 醉翁亭：位于琅琊山麓，是滁州'亭城'文化的象征\n");
-            overview.append("2. 丰乐亭：同样由欧阳修建造，与醉翁亭并称为'姐妹亭'\n");
-            overview.append("3. 琅琊亭：位于琅琊山顶，俯瞰滁州全景\n");
-            overview.append("4. 现代景观亭：近年来新建的体现传统文化与现代设计相结合的景观亭\n\n");
-            overview.append("三、文化内涵：\n");
-            overview.append("滁州的亭子不仅是休憩之所，更是文人雅士聚会论道、吟诗作赋的文化场所，体现了人与自然和谐共生的理念。\n\n");
-            overview.append("四、当代发展：\n");
-            overview.append("今天的滁州在保护历史文化遗产的同时，积极发展现代旅游产业，将'亭文化'融入城市建设，打造独具特色的'亭城'品牌。");
+            String overview = aiService.getCultureOverview();
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
-            response.put("data", overview.toString());
+            response.put("data", overview);
             
             return ResponseEntity.ok(response);
         } catch (Exception e) {
