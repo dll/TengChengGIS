@@ -2,9 +2,9 @@
 FROM maven:3.9-eclipse-temurin-21-alpine AS builder
 WORKDIR /app
 COPY pom.xml ./
-RUN mvn dependency:go-offline -B
+RUN mvn dependency:resolve dependency:resolve-plugins -B -q
 COPY src src
-RUN mvn package -DskipTests -B
+RUN mvn package -DskipTests -B -q
 
 # === 运行阶段 ===
 FROM eclipse-temurin:21-jre-alpine
