@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tingchenggis.tingcheng.dto.PavilionImportResult;
 import com.tingchenggis.tingcheng.entity.Pavilion;
 import com.tingchenggis.tingcheng.entity.PavilionCollector;
+import com.tingchenggis.tingcheng.exception.BusinessException;
 import com.tingchenggis.tingcheng.service.PavilionCollectorService;
 import com.tingchenggis.tingcheng.service.PavilionImportService;
 import com.tingchenggis.tingcheng.service.PavilionService;
@@ -48,12 +49,12 @@ public class PavilionImportServiceImpl implements PavilionImportService {
     @Override
     public PavilionImportResult importAuto(MultipartFile file) {
         String fn = file.getOriginalFilename();
-        if (fn == null) throw new RuntimeException("No filename");
+        if (fn == null) throw new BusinessException("No filename");
         String low = fn.toLowerCase();
         if (low.endsWith(".xlsx") || low.endsWith(".xls")) return importFromExcel(file);
         if (low.endsWith(".geojson") || low.endsWith(".json")) return importFromGeoJson(file);
         if (low.endsWith(".csv")) return importFromCsv(file);
-        throw new RuntimeException("Unsupported format: " + fn);
+        throw new BusinessException("Unsupported format: " + fn);
     }
 
     @Override
@@ -78,7 +79,7 @@ public class PavilionImportServiceImpl implements PavilionImportService {
             }
             logger.info("Excel import: {} success, {} errors", r.getSuccessCount(), r.getErrorCount());
         } catch (Exception e) {
-            throw new RuntimeException("Excel import failed: " + e.getMessage(), e);
+            throw new BusinessException("Excel import failed: " + e.getMessage(), e);
         }
         return r;
     }
@@ -130,7 +131,7 @@ public class PavilionImportServiceImpl implements PavilionImportService {
             JsonNode root = objectMapper.readTree(file.getInputStream());
             JsonNode features = root.get("features");
             if (features == null || !features.isArray())
-                throw new RuntimeException("Invalid GeoJSON: missing features array");
+                throw new BusinessException("Invalid GeoJSON: missing features array");
             r.setTotalRows(features.size());
             for (JsonNode feat : features) {
                 try {
@@ -169,7 +170,7 @@ public class PavilionImportServiceImpl implements PavilionImportService {
                 }
             }
         } catch (Exception e) {
-            throw new RuntimeException("GeoJSON import failed: " + e.getMessage(), e);
+            throw new BusinessException("GeoJSON import failed: " + e.getMessage(), e);
         }
         return r;
     }
@@ -214,7 +215,7 @@ public class PavilionImportServiceImpl implements PavilionImportService {
             }
             r.setTotalRows(r.getSuccessCount() + r.getErrorCount());
         } catch (Exception e) {
-            throw new RuntimeException("CSV import failed: " + e.getMessage(), e);
+            throw new BusinessException("CSV import failed: " + e.getMessage(), e);
         }
         return r;
     }

@@ -1,0 +1,47 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: tingchenggis
+    ports:
+      - "8092:8092"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SERVER_PORT=8092
+    volumes:
+      - uploads:/app/data/uploads
+    restart: unless-stopped
+
+volumes:
+  uploads:
+
+  # ── 如需 PostgreSQL，取消以下注释并设置 SPRING_PROFILES_ACTIVE=prod ──
+  # pgdata:
+  #
+  # services:
+  #   app:
+  #     environment:
+  #       - SPRING_PROFILES_ACTIVE=prod
+  #       - TINGCHENG_DB_PASSWORD=changeMe
+  #       - TINGCHENG_JWT_SECRET=changeMeToo
+  #     depends_on:
+  #       db:
+  #         condition: service_healthy
+  #   db:
+  #     image: postgis/postgis:16-3.4
+  #     container_name: tingchenggis-db
+  #     environment:
+  #       POSTGRES_DB: tingchenggis_pg
+  #       POSTGRES_USER: tingcheng
+  #       POSTGRES_PASSWORD: changeMe
+  #     ports:
+  #       - "5432:5432"
+  #     volumes:
+  #       - pgdata:/var/lib/postgresql/data
+  #     healthcheck:
+  #       test: ["CMD-SHELL", "pg_isready -U tingcheng -d tingchenggis_pg"]
+  #       interval: 5s
+  #       timeout: 5s
+  #       retries: 5
+  #     restart: unless-stopped

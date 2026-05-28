@@ -1,6 +1,7 @@
 package com.tingchenggis.tingcheng.service.impl;
 
 import com.tingchenggis.tingcheng.entity.TourismRoute;
+import com.tingchenggis.tingcheng.exception.NotFoundException;
 import com.tingchenggis.tingcheng.repository.TourismRouteRepository;
 import com.tingchenggis.tingcheng.service.TourismRouteService;
 import org.slf4j.Logger;
@@ -8,7 +9,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -29,7 +33,7 @@ public class TourismRouteServiceImpl implements TourismRouteService {
     @Override
     public TourismRoute updateRoute(Long id, TourismRoute route) {
         Optional<TourismRoute> opt = repository.findById(id);
-        if (opt.isEmpty()) throw new RuntimeException("路线不存在: " + id);
+        if (opt.isEmpty()) throw new NotFoundException("路线不存在: " + id);
         TourismRoute existing = opt.get();
         if (route.getName() != null) existing.setName(route.getName());
         if (route.getDescription() != null) existing.setDescription(route.getDescription());
@@ -45,7 +49,7 @@ public class TourismRouteServiceImpl implements TourismRouteService {
 
     @Override
     public void deleteRoute(Long id) {
-        if (repository.findById(id).isEmpty()) throw new RuntimeException("路线不存在: " + id);
+        if (repository.findById(id).isEmpty()) throw new NotFoundException("路线不存在: " + id);
         repository.deleteById(id);
     }
 

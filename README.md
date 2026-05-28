@@ -1,6 +1,10 @@
-# 滁州亭城GIS系统 (TingChengGIS_TingCheng) - 综合版
+# 滁州亭城GIS系统 (TingChengGIS)
+
+![CI](https://github.com/anomalyco/TingChengGIS/actions/workflows/ci.yml/badge.svg)
 
 滁州亭城GIS系统是一个综合性的地理信息系统，将先进的GIS技术与滁州深厚的"亭城"文化相结合。该系统融合了空间信息技术、大数据分析和人工智能，专注于滁州独特的亭文化资源展示与管理。
+
+> 📖 **运维手册**：详细的生产部署、CI/CD 配置、数据库备份等请参见 [`运维手册.md`](运维手册.md)。
 
 ## 项目概述
 

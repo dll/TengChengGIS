@@ -49,12 +49,13 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/tingchenggis_pg
     username: postgres
-    password: postgres
+    # ⚠️ 生产环境必须通过环境变量 TINGCHENG_DB_PASSWORD 设置密码
+    password: "${TINGCHENG_DB_PASSWORD:}"
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -62,7 +63,7 @@ spring:
 
   h2:
     console:
-      enabled: true
+      enabled: false
 
   servlet:
     multipart:
@@ -96,14 +97,23 @@ tingcheng:
     - cultural: "文化主题亭"
 
   # AI配置 - 支持多模型切换
+  # ⚠️ API Key 通过环境变量注入，切勿硬编码在配置文件中！
+  #   设置方式：TINGCHENG_AI_DEEPSEEK_API_KEY / TINGCHENG_AI_ZHIPU_API_KEY
   ai:
     active-provider: deepseek
     openai-api-key: ""
     openai-api-url: "https://api.openai.com/v1/chat/completions"
     openai-model: "gpt-3.5-turbo"
-    deepseek-api-key: "sk-717ef9146311424daa2fbead8ed4682b"
+    deepseek-api-key: "${TINGCHENG_AI_DEEPSEEK_API_KEY:}"
     deepseek-api-url: "https://api.deepseek.com/v1/chat/completions"
     deepseek-model: "deepseek-v4-flash"
-    zhipu-api-key: "5dc44da8d9dd4c28bf38cde316950f1e.nNIf7AXWrJXIcSyQ"
+    zhipu-api-key: "${TINGCHENG_AI_ZHIPU_API_KEY:}"
     zhipu-api-url: "https://open.bigmodel.cn/api/paas/v4/chat/completions"
     zhipu-model: "glm-4"
+
+  # JWT配置
+  jwt:
+    # ⚠️ 生产环境必须通过环境变量 TINGCHENG_JWT_SECRET 设置强密钥（至少256位/32字符以上）
+    #   当前降级值仅用于开发环境，请勿用于生产！
+    secret: "${TINGCHENG_JWT_SECRET:TingChengGIS-JWT-Secret-Key-2024-Chuzhou-Anhui-China}"
+    expiration-ms: 86400000

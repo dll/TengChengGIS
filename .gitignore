@@ -1,49 +1,40 @@
-# 忽略操作系统文件
 Thumbs.db
 .DS_Store
 
-# 忽略IDE相关文件
 .idea/
 .vscode/
 .settings/
 .classpath
 .project
 
-# 忽略构建文件
 target/
 build/
 *.jar
 *.war
 *.ear
 
-# 忽略日志文件
 logs/
 *.log
 app.log
 
-# 忽略本地环境配置 / 密钥
 .env
 .env.*
 *.local.yml
 application-local.yml
 
-# 忽略临时文件
+key.txt
+
 *.tmp
 *.temp
-nul
 
-# 忽略测试文件
 **/test-output/
 **/surefire-reports/
 
-# 忽略文档生成
 **/site/
 
-# 忽略claude相关文件
 .claude/
-
-# 忽略CodeBuddy相关文件
 .codebuddy/
 
-# 忽略WeChatGIS目录（如果未完成）
 TingChengGIS/WeChatGIS/
+
+node_modules/

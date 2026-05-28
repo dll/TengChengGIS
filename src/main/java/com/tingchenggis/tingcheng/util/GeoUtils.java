@@ -36,6 +36,26 @@ public final class GeoUtils {
         return haversineKm(lon1, lat1, lon2, lat2);
     }
 
+    /** 保留两位小数 */
+    public static double round2(double v) {
+        return Math.round(v * 100.0) / 100.0;
+    }
+
+    /**
+     * 计算方位角（中文方向），参数顺序：(fromLat, fromLng, toLat, toLng)
+     * 返回 "北" / "东北" / "东" / "东南" / "南" / "西南" / "西" / "西北"
+     */
+    public static String computeBearing(double fromLat, double fromLng, double toLat, double toLng) {
+        double dLng = Math.toRadians(toLng - fromLng);
+        double y = Math.sin(dLng) * Math.cos(Math.toRadians(toLat));
+        double x = Math.cos(Math.toRadians(fromLat)) * Math.sin(Math.toRadians(toLat))
+            - Math.sin(Math.toRadians(fromLat)) * Math.cos(Math.toRadians(toLat)) * Math.cos(dLng);
+        double brng = Math.toDegrees(Math.atan2(y, x));
+        brng = (brng + 360) % 360;
+        String[] dirs = {"北", "东北", "东", "东南", "南", "西南", "西", "西北"};
+        return dirs[(int) Math.round(brng / 45.0) % 8];
+    }
+
     /** 把任意 WKT 解析为最小外包矩形 [minLng, maxLng, minLat, maxLat]，至少需要 2 个点 */
     public static double[] parseWktBbox(String wktText) {
         if (wktText == null) return null;

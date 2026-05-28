@@ -36,7 +36,12 @@ public class DataInitializer implements CommandLineRunner {
         boolean adminCreated = appUserService.ensureUser("419116", "419116", "ADMIN", "系统管理员");
         boolean userCreated = appUserService.ensureUser("206004", "206004", "USER", "注册用户");
         if (adminCreated || userCreated) {
-            logger.info("默认账号已就绪：管理员=419116（密码 419116），注册用户=206004（密码 206004）");
+            logger.warn("================================================================");
+            logger.warn("  已创建默认账号（密码已用 BCrypt 加密存储）");
+            logger.warn("    管理员 419116 / 默认密码 419116");
+            logger.warn("    注册用户 206004 / 默认密码 206004");
+            logger.warn("  生产环境请尽快登录后通过「修改密码」功能更改！");
+            logger.warn("================================================================");
         }
     }
 
@@ -52,7 +57,7 @@ public class DataInitializer implements CommandLineRunner {
             logger.info("==============================================");
             logger.info("  当前无亭子数据，请通过 Excel 导入 228 条数据");
             logger.info("  导入接口: POST /thousand-pavilions/import");
-            logger.info("  文件: data/凉亭汇总表.xlsx");
+            logger.info("  文件: data/千亭.xlsx");
             logger.info("==============================================");
         } else {
             logger.info("已加载 {} 个亭子数据，交通路网将按需动态生成", count);

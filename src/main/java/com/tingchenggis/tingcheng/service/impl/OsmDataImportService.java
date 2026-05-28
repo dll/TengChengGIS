@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tingchenggis.tingcheng.entity.AdminDivision;
 import com.tingchenggis.tingcheng.entity.ScenicArea;
+import com.tingchenggis.tingcheng.exception.BusinessException;
 import com.tingchenggis.tingcheng.service.AdminDivisionService;
 import com.tingchenggis.tingcheng.service.ScenicAreaService;
 import org.slf4j.Logger;
@@ -14,7 +15,11 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @Service
 public class OsmDataImportService {
@@ -224,7 +229,7 @@ public class OsmDataImportService {
         conn.setRequestProperty("User-Agent", "TingChengGIS/1.0");
         int code = conn.getResponseCode();
         if (code != 200) {
-            throw new RuntimeException("Overpass API returned HTTP " + code);
+            throw new BusinessException("Overpass API returned HTTP " + code);
         }
         return objectMapper.readTree(conn.getInputStream());
     }

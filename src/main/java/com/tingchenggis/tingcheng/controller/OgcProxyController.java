@@ -1,6 +1,7 @@
 package com.tingchenggis.tingcheng.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tingchenggis.tingcheng.exception.BusinessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
@@ -12,7 +13,10 @@ import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/ogc")
@@ -193,7 +197,7 @@ public class OgcProxyController {
         conn.setRequestProperty("User-Agent", "TingChengGIS/1.0");
         if (accept != null) conn.setRequestProperty("Accept", accept);
         int code = conn.getResponseCode();
-        if (code != 200) throw new RuntimeException("HTTP " + code);
+        if (code != 200) throw new BusinessException("OGC 服务返回 HTTP " + code);
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         byte[] buf = new byte[8192];
         try (InputStream in = conn.getInputStream()) {
@@ -216,7 +220,7 @@ public class OgcProxyController {
         conn.setRequestProperty("User-Agent", "TingChengGIS/1.0");
         if (accept != null) conn.setRequestProperty("Accept", accept);
         int code = conn.getResponseCode();
-        if (code != 200) throw new RuntimeException("HTTP " + code);
+        if (code != 200) throw new BusinessException("OGC 服务返回 HTTP " + code);
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         byte[] buf = new byte[8192];
         try (InputStream in = conn.getInputStream()) {

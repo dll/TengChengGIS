@@ -20,6 +20,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.io.IOException;
 
 @Configuration
 @EnableWebSecurity
@@ -50,7 +51,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 // 登录、注册、当前用户查询（携带 token 才返回信息）
                 .requestMatchers("/auth/login", "/auth/register").permitAll()
-                // H2 Console
+                // H2 Console（dev profile 下 h2.console.enabled=true 时才生效；prod 下路径不存在，无害）
                 .requestMatchers("/h2-console/**").permitAll()
                 // 静态资源 / 首页 / 分享页
                 .requestMatchers("/", "/index.html", "/share.html", "/share/**",
@@ -109,7 +110,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    private void writeJson(HttpServletResponse res, int status, String message) throws java.io.IOException {
+    private void writeJson(HttpServletResponse res, int status, String message) throws IOException {
         res.setStatus(status);
         res.setContentType(MediaType.APPLICATION_JSON_VALUE);
         res.setCharacterEncoding("UTF-8");

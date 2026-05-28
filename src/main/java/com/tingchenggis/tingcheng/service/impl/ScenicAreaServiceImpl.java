@@ -1,6 +1,7 @@
 package com.tingchenggis.tingcheng.service.impl;
 
 import com.tingchenggis.tingcheng.entity.ScenicArea;
+import com.tingchenggis.tingcheng.exception.NotFoundException;
 import com.tingchenggis.tingcheng.repository.ScenicAreaRepository;
 import com.tingchenggis.tingcheng.service.ScenicAreaCollectorService;
 import com.tingchenggis.tingcheng.service.ScenicAreaService;
@@ -12,7 +13,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -76,7 +80,7 @@ public class ScenicAreaServiceImpl implements ScenicAreaService {
     @Override
     public void deleteScenicArea(Long id) {
         if (!scenicAreaRepository.existsById(id))
-            throw new RuntimeException("ScenicArea not found: " + id);
+            throw new NotFoundException("ScenicArea not found: " + id);
         collectorService.deleteCollectorsByScenicAreaId(id);
         scenicAreaRepository.deleteById(id);
     }

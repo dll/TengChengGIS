@@ -1,6 +1,7 @@
 package com.tingchenggis.tingcheng.service.impl;
 
 import com.tingchenggis.tingcheng.entity.TravelLog;
+import com.tingchenggis.tingcheng.exception.NotFoundException;
 import com.tingchenggis.tingcheng.repository.TravelLogRepository;
 import com.tingchenggis.tingcheng.service.TravelLogService;
 import org.slf4j.Logger;
@@ -30,7 +31,7 @@ public class TravelLogServiceImpl implements TravelLogService {
     @Override
     public TravelLog updateLog(Long id, TravelLog log) {
         Optional<TravelLog> opt = repository.findById(id);
-        if (opt.isEmpty()) throw new RuntimeException("日志不存在: " + id);
+        if (opt.isEmpty()) throw new NotFoundException("日志不存在: " + id);
         TravelLog existing = opt.get();
         if (log.getTitle() != null) existing.setTitle(log.getTitle());
         if (log.getContent() != null) existing.setContent(log.getContent());
@@ -45,7 +46,7 @@ public class TravelLogServiceImpl implements TravelLogService {
 
     @Override
     public void deleteLog(Long id) {
-        if (repository.findById(id).isEmpty()) throw new RuntimeException("日志不存在: " + id);
+        if (repository.findById(id).isEmpty()) throw new NotFoundException("日志不存在: " + id);
         repository.deleteById(id);
     }
 

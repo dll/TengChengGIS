@@ -2,6 +2,7 @@ package com.tingchenggis.tingcheng.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tingchenggis.tingcheng.entity.Pavilion;
+import com.tingchenggis.tingcheng.exception.NotFoundException;
 import com.tingchenggis.tingcheng.service.PavilionService;
 import com.tingchenggis.tingcheng.service.PavilionStats;
 import org.junit.jupiter.api.Test;
@@ -94,7 +95,7 @@ class PavilionControllerTest {
 
     @Test
     void updatePavilion_notFound() throws Exception {
-        when(pavilionService.updatePavilion(eq(99L), any())).thenThrow(new RuntimeException("Pavilion not found"));
+        when(pavilionService.updatePavilion(eq(99L), any())).thenThrow(new NotFoundException("Pavilion not found"));
 
         mockMvc.perform(put("/pavilions/99")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -113,7 +114,7 @@ class PavilionControllerTest {
 
     @Test
     void deletePavilion_notFound() throws Exception {
-        doThrow(new RuntimeException("Pavilion not found")).when(pavilionService).deletePavilion(99L);
+        doThrow(new NotFoundException("Pavilion not found")).when(pavilionService).deletePavilion(99L);
 
         mockMvc.perform(delete("/pavilions/99"))
             .andExpect(status().isNotFound());
