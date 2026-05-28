@@ -106,7 +106,7 @@ tingcheng:
     openai-model: "gpt-3.5-turbo"
     deepseek-api-key: "${TINGCHENG_AI_DEEPSEEK_API_KEY:}"
     deepseek-api-url: "https://api.deepseek.com/v1/chat/completions"
-    deepseek-model: "deepseek-v4-flash"
+    deepseek-model: "deepseek-chat"
     zhipu-api-key: "${TINGCHENG_AI_ZHIPU_API_KEY:}"
     zhipu-api-url: "https://open.bigmodel.cn/api/paas/v4/chat/completions"
     zhipu-model: "glm-4"

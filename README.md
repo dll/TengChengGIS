@@ -1,6 +1,6 @@
 # 滁州亭城GIS系统 (TingChengGIS)
 
-![CI](https://github.com/anomalyco/TingChengGIS/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/dll/TengChengGIS/actions/workflows/ci.yml/badge.svg)
 
 滁州亭城GIS系统是一个综合性的地理信息系统，将先进的GIS技术与滁州深厚的"亭城"文化相结合。该系统融合了空间信息技术、大数据分析和人工智能，专注于滁州独特的亭文化资源展示与管理。
 
@@ -79,7 +79,7 @@
 ## 项目结构
 
 ```
-TingChengGIS_TingCheng/
+TingChengGIS/
 ├── src/main/java/com/tingchenggis/tingcheng/
 │   ├── controller/     # 控制器层
 │   ├── entity/         # 实体类
@@ -121,62 +121,97 @@ TingChengGIS_TingCheng/
 ## API接口
 
 ### 亭子管理接口
-- `GET /api/pavilions` - 获取所有亭子（分页）
-- `GET /api/pavilions/{id}` - 根据ID获取特定亭子
-- `POST /api/pavilions` - 创建新的亭子
-- `PUT /api/pavilions/{id}` - 更新亭子信息
-- `DELETE /api/pavilions/{id}` - 删除亭子
+- `GET /pavilions` - 获取所有亭子（分页）
+- `GET /pavilions/{id}` - 根据ID获取特定亭子
+- `POST /pavilions` - 创建新的亭子
+- `PUT /pavilions/{id}` - 更新亭子信息
+- `DELETE /pavilions/{id}` - 删除亭子
 
-### 分类查询接口
-- `GET /api/pavilions/type/{pavilionType}` - 按类型查询亭子
-- `GET /api/pavilions/search?name={keyword}` - 按名称搜索亭子
-- `GET /api/pavilions/by-year-range?startYear={year}&endYear={year}` - 按年代区间查询
+### GIS查询接口
+- `GET /pavilions-gis/distance/{id1}/{id2}` - 计算两亭距离
+- `GET /pavilions-gis/nearest?lat=&lng=&limit=` - 查询最近亭子
+- `GET /pavilions-gis/heatmap` - 热力图数据
+- `POST /pavilions-gis/density` - 密度分析
 
-### AI智能服务接口
-- `GET /api/ai/culture-intro?pavilionName={name}&location={location}` - 生成文化介绍
-- `GET /api/ai/historical-story?pavilionName={name}&constructionYear={year}` - 生成历史故事
-- `POST /api/ai/ask` - AI智能问答
-- `POST /api/ai/tourism-advice` - 生成游览建议
-- `GET /api/ai/culture-overview` - 获取文化概览
+### 千亭综合接口 (Thousand Pavilions)
+- `GET /thousand-pavilions/locations` - 所有亭子位置
+- `GET /thousand-pavilions/route/{fromId}/{toId}` - 两亭间路线
+- `GET /thousand-pavilions/traverse-all` - 遍历所有亭子的最优路线
+- `GET /thousand-pavilions/optimal-route` - TSP 最优路径
+- `POST /thousand-pavilions/navigation-plan` - 导航方案
+- `GET /thousand-pavilions/navigation/{fromId}/{toId}` - 导航指引
+- `POST /thousand-pavilions/multi-route` - 多路线规划
+- `POST /thousand-pavilions/import` - 上传Excel导入千亭数据
+- `GET /thousand-pavilions/export/geojson` - 导出GeoJSON
+- `GET /thousand-pavilions/smart-tour` - 智能游览推荐
 
-### 遍历千亭功能接口
-- `GET /thousand-pavilions/locations` - 获取所有亭子位置信息
-- `GET /thousand-pavilions/route/{fromId}/{toId}` - 获取两亭之间的路线
-- `GET /thousand-pavilions/multimedia/{id}` - 获取亭子多媒体信息
+### AI服务接口
+- `GET /ai/chat?question=&pavilionName=` - AI智能对话
+- `GET /ai/pavilion/{pavilionId}` - 亭子AI文化介绍
+- `POST /ai/tour-advice` - 游览建议生成
+- `GET /ai/status` - AI服务状态
+
+### 交通路线接口
+- `GET /transport-routes/from/{pavilionId}` - 某亭出发路线
+- `GET /transport-routes/between/{id1}/{id2}` - 两亭间交通
+- `GET /transport-routes/by-mode/{mode}` - 按交通方式查询
+- `POST /transport-routes/tsp-plan` - TSP多亭路线规划
+- `POST /transport-routes/build-network` - 构建路网（管理员）
+- `POST /transport-routes/build-multi-modal` - 多模式路网（管理员）
+
+### 导航接口
+- `GET /nav/turn-by-turn/{fromId}/{toId}` - 逐向导航
+- `GET /nav/turn-by-turn/coords?fromLng=&fromLat=&toLng=&toLat=` - 坐标导航
+
+### VR/AR体验接口
+- `GET /vr-ar/experience/{pavilionId}` - VR体验数据
+- `GET /vr-ar/ar-overlay/{pavilionId}` - AR叠加数据
+- `GET /vr-ar/3d-scene/{pavilionId}` - 3D场景数据
+
+### 认证接口
+- `POST /auth/login` - 用户登录
+- `POST /auth/register` - 用户注册
+- `POST /auth/change-password` - 修改密码
+- `GET /auth/me` - 当前用户信息
+
+### 辅助功能接口
+- `POST /api/upload/photo` - 上传图片
+- `GET /api/upload/file/**` - 获取上传文件
+- `POST /coordinate/transform` - 坐标转换 (WGS-84 ↔ GCJ-02)
+- `POST /coordinate/correct-pavilions` - 批量纠正坐标（管理员）
+- `POST /ogc/wms/map` - OGC WMS地图请求
+- `POST /ogc/wfs/features` - OGC WFS要素查询
+- `POST /osm/import/all` - 导入所有OSM数据
+- `POST /osm/import/scenic` - 导入景区数据
 
 ## 快速开始
 
 ### 环境要求
-- Java 21 或更高版本
-- Maven 3.8 或更高版本
+- JDK 21+
+- Maven 3.8+
 - Docker (可选，用于容器化部署)
 
 ### 本地运行
-1. **环境要求**:
-   - JDK 17+
-   - Maven 3.6+
-   - PostgreSQL (可选，H2内存数据库已配置)
-
-2. 克隆项目
+1. 克隆项目
    ```bash
    git clone <repository-url>
-   cd TingChengGIS_TingCheng
+   cd TingChengGIS
    ```
 
-3. 配置OpenAI API密钥（可选）
-   在 `application.yml` 中设置 `spring.ai.openai.api-key`
+2. 配置AI API密钥（可选，默认使用内置模板）
+   在 `application.yml` 中设置 `tingcheng.ai.deepseek-api-key` 或通过环境变量 `TINGCHENG_AI_DEEPSEEK_API_KEY` 注入
 
-4. 构建项目
+3. 构建项目
    ```bash
    mvn clean install
    ```
 
-5. 运行应用
+4. 运行应用
    ```bash
    mvn spring-boot:run
    ```
 
-6. 访问应用
+5. 访问应用
    - 应用启动后，默认访问地址: http://localhost:8092
    - H2数据库控制台: http://localhost:8092/h2-console
    - API端点示例: http://localhost:8092/thousand-pavilions/locations
