@@ -2,48 +2,24 @@ package com.tingchenggis.tingcheng.config;
 
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.client.RestTemplate;
 
-/**
- * 应用程序配置类
- * 
- * 配置Spring Boot应用程序的各种组件
- * 
- * @author TingChengGIS
- * @version 1.0.0
- */
 @Configuration
 public class AppConfig {
 
-    /**
-     * 配置JTS几何工厂
-     * 
-     * @return GeometryFactory实例
-     */
+    /** WGS84 几何工厂，供 JTS 使用 */
     @Bean
     public GeometryFactory geometryFactory() {
-        return new GeometryFactory(new PrecisionModel(), 4326); // WGS84坐标系
+        return new GeometryFactory(new PrecisionModel(), 4326);
     }
 
-    /**
-     * 配置跨域资源共享(CORS)
-     * 
-     * @return WebMvcConfigurer实例
-     */
     @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/api/**")
-                        .allowedOrigins("*")
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                        .allowedHeaders("*")
-                        .maxAge(3600);
-            }
-        };
+    public RestTemplate restTemplate(RestTemplateBuilder builder) {
+        return builder.build();
     }
+
+    // CORS 由 SecurityConfig.corsConfigurationSource() 统一管理，避免重复配置
 }

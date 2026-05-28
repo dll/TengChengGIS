@@ -27,6 +27,12 @@ public class AdminDivision {
     @Column(name = "parent_name")
     private String parentName;
 
+    @Column(name = "longitude")
+    private Double longitude;
+
+    @Column(name = "latitude")
+    private Double latitude;
+
     @Column(name = "geom_wkt", columnDefinition = "TEXT")
     private String geomWkt;
 
@@ -76,6 +82,12 @@ public class AdminDivision {
 
     public String getParentName() { return parentName; }
     public void setParentName(String parentName) { this.parentName = parentName; }
+
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
+
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
 
     public String getGeomWkt() { return geomWkt; }
     public void setGeomWkt(String geomWkt) { this.geomWkt = geomWkt; }

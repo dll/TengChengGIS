@@ -1,32 +1,46 @@
 package com.tingchenggis.tingcheng.config;
 
-import com.tingchenggis.tingcheng.entity.Pavilion;
+import com.tingchenggis.tingcheng.service.AppUserService;
 import com.tingchenggis.tingcheng.service.PavilionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 /**
  * 应用启动检查器
  *
- * 检查是否有亭子数据，若无则提示从Excel导入228条真实亭子数据
- * 不再创建任何硬编码的模拟数据
- *
- * @author TingChengGIS
- * @version 2.0.0
+ * 1. 检查亭子数据是否已初始化
+ * 2. 播种默认账号：管理员 419116 / 注册用户 206004（密码与账号相同）
  */
 @Component
 public class DataInitializer implements CommandLineRunner {
 
     private static final Logger logger = LoggerFactory.getLogger(DataInitializer.class);
 
-    @Autowired
-    private PavilionService pavilionService;
+    private final PavilionService pavilionService;
+    private final AppUserService appUserService;
+
+    public DataInitializer(PavilionService pavilionService, AppUserService appUserService) {
+        this.pavilionService = pavilionService;
+        this.appUserService = appUserService;
+    }
 
     @Override
     public void run(String... args) {
+        seedUsers();
+        seedPavilionsHint();
+    }
+
+    private void seedUsers() {
+        boolean adminCreated = appUserService.ensureUser("419116", "419116", "ADMIN", "系统管理员");
+        boolean userCreated = appUserService.ensureUser("206004", "206004", "USER", "注册用户");
+        if (adminCreated || userCreated) {
+            logger.info("默认账号已就绪：管理员=419116（密码 419116），注册用户=206004（密码 206004）");
+        }
+    }
+
+    private void seedPavilionsHint() {
         long count = 0;
         try {
             count = pavilionService.getAllPavilions().size();

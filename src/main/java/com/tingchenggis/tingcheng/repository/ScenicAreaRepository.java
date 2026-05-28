@@ -15,8 +15,9 @@ public interface ScenicAreaRepository extends JpaRepository<ScenicArea, Long> {
 
     List<ScenicArea> findByNameContainingIgnoreCase(String name);
 
-    @Query(value = "SELECT * FROM scenic_areas WHERE ST_Intersects(ST_GeomFromText(geom_wkt), ST_GeomFromText(:wktText))", nativeQuery = true)
-    List<ScenicArea> findByGeographicRange(@Param("wktText") String wktText);
+    @Query("SELECT s FROM ScenicArea s WHERE s.longitude BETWEEN :minLng AND :maxLng AND s.latitude BETWEEN :minLat AND :maxLat")
+    List<ScenicArea> findByGeographicRange(@Param("minLng") Double minLng, @Param("maxLng") Double maxLng,
+                                           @Param("minLat") Double minLat, @Param("maxLat") Double maxLat);
 
     List<ScenicArea> findByIsOpenToPublicTrue();
 }

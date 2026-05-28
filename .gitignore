@@ -19,6 +19,13 @@ build/
 # 忽略日志文件
 logs/
 *.log
+app.log
+
+# 忽略本地环境配置 / 密钥
+.env
+.env.*
+*.local.yml
+application-local.yml
 
 # 忽略临时文件
 *.tmp

@@ -45,4 +45,20 @@ public final class CoordinateTransform {
         r += (150.0 * Math.sin(x / 12.0 * PI) + 300.0 * Math.sin(x / 30.0 * PI)) * 2.0 / 3.0;
         return r;
     }
+
+    /**
+     * GCJ-02 → WGS-84 逆向转换（迭代法）
+     * 通过不断逼近计算反偏移
+     */
+    public static double[] gcj02ToWgs84(double lng, double lat) {
+        if (outOfChina(lng, lat)) return new double[]{lng, lat};
+        double[] wgs = new double[]{lng, lat};
+        double[] gcj;
+        for (int i = 0; i < 5; i++) {
+            gcj = wgs84ToGcj02(wgs[0], wgs[1]);
+            wgs[0] += lng - gcj[0];
+            wgs[1] += lat - gcj[1];
+        }
+        return wgs;
+    }
 }

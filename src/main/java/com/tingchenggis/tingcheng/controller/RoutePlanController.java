@@ -5,9 +5,17 @@ import com.tingchenggis.tingcheng.entity.RoutePlan;
 import com.tingchenggis.tingcheng.repository.RoutePlanRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -60,6 +68,63 @@ public class RoutePlanController {
             }
         }
         return ResponseEntity.ok(resp);
+    }
+
+    private final Path gifDir = Paths.get("data", "gifs");
+
+    /** 上传 GIF 文件关联到指定方案 */
+    @PostMapping("/{id}/gif")
+    public ResponseEntity<Map<String, Object>> uploadGif(@PathVariable Long id,
+                                                         @RequestParam("file") MultipartFile file) {
+        Map<String, Object> resp = new LinkedHashMap<>();
+        try {
+            Optional<RoutePlan> opt = repository.findById(id);
+            if (opt.isEmpty()) {
+                resp.put("success", false);
+                resp.put("message", "方案不存在");
+                return ResponseEntity.status(404).body(resp);
+            }
+            Files.createDirectories(gifDir);
+            String filename = "plan_" + id + ".gif";
+            Path target = gifDir.resolve(filename);
+            file.transferTo(target.toFile());
+
+            RoutePlan plan = opt.get();
+            plan.setGifPath(target.toString());
+            repository.save(plan);
+
+            resp.put("success", true);
+            resp.put("gifUrl", "/route-plans/" + id + "/gif");
+            return ResponseEntity.ok(resp);
+        } catch (Exception e) {
+            logger.error("GIF上传失败 id={}", id, e);
+            resp.put("success", false);
+            resp.put("message", "上传失败: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(resp);
+        }
+    }
+
+    /** 获取方案关联的 GIF 文件 */
+    @GetMapping("/{id}/gif")
+    public ResponseEntity<?> getGif(@PathVariable Long id) {
+        try {
+            Optional<RoutePlan> opt = repository.findById(id);
+            if (opt.isEmpty()) {
+                return ResponseEntity.status(404).body(Map.of("success", false, "message", "方案不存在"));
+            }
+            RoutePlan plan = opt.get();
+            if (plan.getGifPath() == null || !Files.exists(Paths.get(plan.getGifPath()))) {
+                return ResponseEntity.status(404).body(Map.of("success", false, "message", "GIF不存在"));
+            }
+            Resource resource = new FileSystemResource(plan.getGifPath());
+            return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_GIF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + plan.getPlanName() + ".gif\"")
+                .body(resource);
+        } catch (Exception e) {
+            logger.error("GIF获取失败 id={}", id, e);
+            return ResponseEntity.internalServerError().body(Map.of("success", false, "message", e.getMessage()));
+        }
     }
 
     @PostMapping
@@ -135,6 +200,8 @@ public class RoutePlanController {
         m.put("visitOrderNames", p.getVisitOrderNames());
         m.put("notes", p.getNotes());
         m.put("createdAt", p.getCreatedAt());
+        m.put("hasGif", p.getGifPath() != null);
+        m.put("gifUrl", p.getGifPath() != null ? "/route-plans/" + p.getId() + "/gif" : null);
         return m;
     }
 

@@ -5,6 +5,7 @@ import com.tingchenggis.tingcheng.repository.PavilionRepository;
 import com.tingchenggis.tingcheng.service.PavilionGISService;
 import com.tingchenggis.tingcheng.service.PavilionStats;
 import com.tingchenggis.tingcheng.service.PavilionService;
+import com.tingchenggis.tingcheng.util.GeoUtils;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -28,11 +29,8 @@ import java.util.stream.Collectors;
 
 /**
  * 亭子GIS服务实现类 - 简化版
- * 
+ *
  * 整合QGIS功能与滁州亭城文化内容
- * 
- * @author TingChengGIS
- * @version 1.0.0
  */
 @Service
 @Transactional
@@ -48,28 +46,10 @@ public class PavilionGISServiceImpl implements PavilionGISService {
     }
 
     private final GeometryFactory geometryFactory = new GeometryFactory();
-    
-    /**
-     * 计算两点间距离（使用球面余弦定律）
-     * @param lon1 第一个点的经度
-     * @param lat1 第一个点的纬度
-     * @param lon2 第二个点的经度
-     * @param lat2 第二个点的纬度
-     * @return 距离（单位：千米）
-     */
+
+    /** 委托给统一的 GeoUtils.haversineKm，参数顺序：lon1, lat1, lon2, lat2 */
     private double calculateDistance(double lon1, double lat1, double lon2, double lat2) {
-        final double R = 6371; // 地球半径（千米）
-        double latRad1 = Math.toRadians(lat1);
-        double latRad2 = Math.toRadians(lat2);
-        double deltaLatRad = Math.toRadians(lat2 - lat1);
-        double deltaLonRad = Math.toRadians(lon2 - lon1);
-
-        double a = Math.sin(deltaLatRad / 2) * Math.sin(deltaLatRad / 2) +
-                   Math.cos(latRad1) * Math.cos(latRad2) *
-                   Math.sin(deltaLonRad / 2) * Math.sin(deltaLonRad / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        return R * c; // 距离（千米）
+        return GeoUtils.haversineKm(lon1, lat1, lon2, lat2);
     }
 
     @Override

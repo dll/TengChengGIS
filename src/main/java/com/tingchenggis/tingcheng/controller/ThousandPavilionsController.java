@@ -3,11 +3,15 @@ package com.tingchenggis.tingcheng.controller;
 import com.tingchenggis.tingcheng.dto.PavilionImportResult;
 import com.tingchenggis.tingcheng.entity.Pavilion;
 import com.tingchenggis.tingcheng.entity.PavilionCollector;
+import com.tingchenggis.tingcheng.exception.BusinessException;
+import com.tingchenggis.tingcheng.exception.NotFoundException;
+import com.tingchenggis.tingcheng.service.NavigationService;
 import com.tingchenggis.tingcheng.service.PavilionCollectorService;
 import com.tingchenggis.tingcheng.service.PavilionExportService;
 import com.tingchenggis.tingcheng.service.PavilionImportService;
 import com.tingchenggis.tingcheng.service.PavilionService;
 import com.tingchenggis.tingcheng.service.ThousandPavilionsService;
+import com.tingchenggis.tingcheng.util.GeoUtils;
 import com.tingchenggis.tingcheng.util.PavilionTypeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,17 +51,20 @@ public class ThousandPavilionsController {
     private final PavilionImportService pavilionImportService;
     private final PavilionExportService pavilionExportService;
     private final PavilionCollectorService collectorService;
+    private final NavigationService navigationService;
 
     public ThousandPavilionsController(PavilionService pavilionService,
                                         ThousandPavilionsService thousandPavilionsService,
                                         PavilionImportService pavilionImportService,
                                         PavilionExportService pavilionExportService,
-                                        PavilionCollectorService collectorService) {
+                                        PavilionCollectorService collectorService,
+                                        NavigationService navigationService) {
         this.pavilionService = pavilionService;
         this.thousandPavilionsService = thousandPavilionsService;
         this.pavilionImportService = pavilionImportService;
         this.pavilionExportService = pavilionExportService;
         this.collectorService = collectorService;
+        this.navigationService = navigationService;
     }
 
     /**
@@ -104,6 +111,12 @@ public class ThousandPavilionsController {
             location.put("notes", pavilion.getNotes());
             location.put("locationDesc", pavilion.getLocationDesc());
             location.put("areaSize", pavilion.getAreaSize());
+            location.put("architecturalStyle", pavilion.getArchitecturalStyle());
+            location.put("historicalSignificance", pavilion.getHistoricalSignificance());
+            location.put("constructionPeriod", pavilion.getConstructionPeriod());
+            location.put("ticketPrice", pavilion.getTicketPrice());
+            location.put("lastRenovationYear", pavilion.getLastRenovationYear());
+            location.put("englishName", pavilion.getName());
 
             if (pavilion.getLongitude() != null && pavilion.getLatitude() != null) {
                 location.put("longitude", pavilion.getLongitude());
@@ -129,33 +142,27 @@ public class ThousandPavilionsController {
      */
     @GetMapping("/route/{fromId}/{toId}")
     public Map<String, Object> getRouteBetweenPavilions(@PathVariable Long fromId, @PathVariable Long toId) {
-        Optional<Pavilion> fromPavilionOpt = pavilionService.getPavilionById(fromId);
-        Optional<Pavilion> toPavilionOpt = pavilionService.getPavilionById(toId);
-
-        if (fromPavilionOpt.isEmpty() || toPavilionOpt.isEmpty()) {
-            throw new RuntimeException("亭子不存在");
-        }
-        
-        Pavilion fromPavilion = fromPavilionOpt.orElseThrow(() -> new RuntimeException("起始亭子不存在"));
-        Pavilion toPavilion = toPavilionOpt.orElseThrow(() -> new RuntimeException("目标亭子不存在"));
+        Pavilion fromPavilion = pavilionService.getPavilionById(fromId)
+            .orElseThrow(() -> new NotFoundException("起始亭子不存在: " + fromId));
+        Pavilion toPavilion = pavilionService.getPavilionById(toId)
+            .orElseThrow(() -> new NotFoundException("目标亭子不存在: " + toId));
 
         Map<String, Object> routeInfo = new HashMap<>();
         routeInfo.put("from", fromPavilion.getChineseName());
         routeInfo.put("to", toPavilion.getChineseName());
 
-        // 计算两点间的距离（简化算法）
         if (fromPavilion.getLatitude() != null && fromPavilion.getLongitude() != null &&
             toPavilion.getLatitude() != null && toPavilion.getLongitude() != null) {
-            
-            double distance = calculateDistance(
+
+            double distance = GeoUtils.haversineKm(
                 fromPavilion.getLongitude(), fromPavilion.getLatitude(),
                 toPavilion.getLongitude(), toPavilion.getLatitude()
             );
-            routeInfo.put("distance", Math.round(distance * 100.0) / 100.0); // 保留两位小数
-            routeInfo.put(ESTIMATED_TIME, Math.round(distance * 10)); // 估算时间（分钟）
+            routeInfo.put("distance", Math.round(distance * 100.0) / 100.0);
+            routeInfo.put(ESTIMATED_TIME, Math.round(distance * 10));
         }
 
-        routeInfo.put("transportation", "步行"); // 简化交通方式
+        routeInfo.put("transportation", "步行");
         routeInfo.put("scenicSpots", "沿途风景优美");
 
         return routeInfo;
@@ -187,7 +194,7 @@ public class ThousandPavilionsController {
             if (from.getLatitude() != null && from.getLongitude() != null &&
                 to.getLatitude() != null && to.getLongitude() != null) {
 
-                double distance = calculateDistance(
+                double distance = GeoUtils.haversineKm(
                     from.getLongitude(), from.getLatitude(),
                     to.getLongitude(), to.getLatitude()
                 );
@@ -239,14 +246,9 @@ public class ThousandPavilionsController {
      */
     @GetMapping("/multimedia/{pavilionId}")
     public Map<String, Object> getPavilionMultimedia(@PathVariable Long pavilionId) {
-        Optional<Pavilion> pavilionOpt = pavilionService.getPavilionById(pavilionId);
+        Pavilion pavilion = pavilionService.getPavilionById(pavilionId)
+            .orElseThrow(() -> new NotFoundException("亭子不存在: " + pavilionId));
         Map<String, Object> multimediaInfo = new HashMap<>();
-
-        if (pavilionOpt.isEmpty()) {
-            throw new RuntimeException("亭子不存在");
-        }
-        
-        Pavilion pavilion = pavilionOpt.get();
 
         multimediaInfo.put("id", pavilion.getId());
         multimediaInfo.put("name", pavilion.getChineseName());
@@ -271,51 +273,36 @@ public class ThousandPavilionsController {
     }
 
     /**
-     * 获取实时路线导航
+     * 获取逐向实时导航
      */
     @GetMapping("/navigation/{fromId}/{toId}")
-    public Map<String, Object> getRealTimeNavigation(@PathVariable Long fromId, @PathVariable Long toId) {
-        Map<String, Object> navigation = new HashMap<>();
-        
-        Optional<Pavilion> fromPavilionOpt = pavilionService.getPavilionById(fromId);
-        Optional<Pavilion> toPavilionOpt = pavilionService.getPavilionById(toId);
+    public Map<String, Object> getRealTimeNavigation(
+            @PathVariable Long fromId,
+            @PathVariable Long toId,
+            @RequestParam(defaultValue = "WALKING") String mode) {
+        logger.info("获取实时导航: fromId={}, toId={}, mode={}", fromId, toId, mode);
 
-        if (fromPavilionOpt.isEmpty() || toPavilionOpt.isEmpty()) {
-            throw new RuntimeException("亭子不存在");
-        }
-        
-        Pavilion fromPavilion = fromPavilionOpt.get();
-        Pavilion toPavilion = toPavilionOpt.get();
+        Pavilion from = pavilionService.getPavilionById(fromId)
+            .orElseThrow(() -> new NotFoundException("起始亭子不存在: " + fromId));
+        Pavilion to = pavilionService.getPavilionById(toId)
+            .orElseThrow(() -> new NotFoundException("目标亭子不存在: " + toId));
 
-        navigation.put("from", fromPavilion.getChineseName());
-        navigation.put("to", toPavilion.getChineseName());
-        navigation.put("currentLocation", "起点");
-        navigation.put("destination", toPavilion.getChineseName());
-
-        if (fromPavilion.getLatitude() != null && fromPavilion.getLongitude() != null &&
-            toPavilion.getLatitude() != null && toPavilion.getLongitude() != null) {
-            
-            double distance = calculateDistance(
-                fromPavilion.getLongitude(), fromPavilion.getLatitude(),
-                toPavilion.getLongitude(), toPavilion.getLatitude()
-            );
-
-            navigation.put("distanceRemaining", Math.round(distance * 100.0) / 100.0);
-            navigation.put("estimatedArrival", System.currentTimeMillis() + (long)(distance * 600000)); // 十分钟后
-            
-            // 简单的方向指示
-            String directions = generateSimpleDirections(
-                fromPavilion.getLongitude(), fromPavilion.getLatitude(),
-                toPavilion.getLongitude(), toPavilion.getLatitude()
-            );
-            navigation.put("directions", directions);
+        if (from.getLongitude() == null || from.getLatitude() == null ||
+            to.getLongitude() == null || to.getLatitude() == null) {
+            throw new BusinessException("亭子位置信息不完整");
         }
 
-        navigation.put("traffic", "畅通");
-        navigation.put("weather", "晴朗");
-        navigation.put("recommendation", "建议步行前往，沿途欣赏风景");
+        Map<String, Object> nav = navigationService.getTurnByTurnNavigation(
+            from.getLongitude(), from.getLatitude(),
+            to.getLongitude(), to.getLatitude(),
+            mode);
 
-        return navigation;
+        nav.put("fromName", from.getChineseName());
+        nav.put("toName", to.getChineseName());
+        nav.put("fromId", fromId);
+        nav.put("toId", toId);
+
+        return nav;
     }
 
     /**
@@ -342,44 +329,6 @@ public class ThousandPavilionsController {
     }
 
     /**
-     * 计算两点间距离（使用球面余弦定律）
-     */
-    private double calculateDistance(double lon1, double lat1, double lon2, double lat2) {
-        double R = 6371; // 地球半径（公里）
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                   Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                   Math.sin(dLon/2) * Math.sin(dLon/2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return R * c;
-    }
-
-    private String generateSimpleDirections(double fromLon, double fromLat, double toLon, double toLat) {
-        StringBuilder directions = new StringBuilder();
-        
-        double deltaX = toLon - fromLon;
-        double deltaY = toLat - fromLat;
-        
-        if (Math.abs(deltaX) > Math.abs(deltaY)) {
-            if (deltaX > 0) {
-                directions.append("向东");
-            } else {
-                directions.append("向西");
-            }
-        } else {
-            if (deltaY > 0) {
-                directions.append("向北");
-            } else {
-                directions.append("向南");
-            }
-        }
-        
-        directions.append("前行至目的地");
-        return directions.toString();
-    }
-
-    /**
      * 导航请求类
      */
     public static class NavigationRequest {
@@ -401,10 +350,7 @@ public class ThousandPavilionsController {
         public String getEndTime() { return endTime; }
         public void setEndTime(String endTime) { this.endTime = endTime; }
     }
-    
-    /**
-     * 添加亭子
-     */
+
     private String buildTextGuide(Pavilion pavilion) {
         StringBuilder guide = new StringBuilder();
         guide.append("欢迎来到").append(pavilion.getChineseName()).append("。");
@@ -429,145 +375,83 @@ public class ThousandPavilionsController {
 
     @PostMapping
     public ResponseEntity<Map<String, Object>> createPavilion(@RequestBody Pavilion pavilion) {
-        try {
-            logger.info("创建新亭子: {}", pavilion.getChineseName());
-            normalizePavilionFields(pavilion);
-
-            Pavilion savedPavilion = pavilionService.createPavilion(pavilion);
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "亭子创建成功");
-            response.put("data", savedPavilion);
-            
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            logger.error("创建亭子失败", e);
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "创建亭子失败: " + e.getMessage());
-            
-            return ResponseEntity.internalServerError().body(response);
+        if (pavilion == null) {
+            throw new BusinessException("请求体不能为空");
         }
+        if ((pavilion.getChineseName() == null || pavilion.getChineseName().isBlank())
+            && (pavilion.getName() == null || pavilion.getName().isBlank())) {
+            throw new BusinessException("亭子名称不能为空");
+        }
+        logger.info("创建新亭子: {}", pavilion.getChineseName());
+        normalizePavilionFields(pavilion);
+
+        Pavilion savedPavilion = pavilionService.createPavilion(pavilion);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "亭子创建成功");
+        response.put("data", savedPavilion);
+        return ResponseEntity.ok(response);
     }
-    
+
     /**
      * 更新亭子
      */
     @PutMapping("/{id}")
     public ResponseEntity<Map<String, Object>> updatePavilion(@PathVariable Long id, @RequestBody Pavilion pavilion) {
-        try {
-            logger.info("更新亭子 ID: {}", id);
-            
-            Optional<Pavilion> existingPavilionOpt = pavilionService.getPavilionById(id);
-            if (existingPavilionOpt.isEmpty()) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("success", false);
-                response.put("message", "亭子不存在");
-                
-                return ResponseEntity.notFound().build();
-            }
-            
-            Pavilion existingPavilion = existingPavilionOpt.get();
-            normalizePavilionFields(pavilion);
+        logger.info("更新亭子 ID: {}", id);
 
-            // 更新字段
-            if (pavilion.getChineseName() != null) {
-                existingPavilion.setChineseName(pavilion.getChineseName());
-            }
-            if (pavilion.getPavilionType() != null) {
-                existingPavilion.setPavilionType(pavilion.getPavilionType());
-            }
-            if (pavilion.getBuiltYear() != null) {
-                existingPavilion.setBuiltYear(pavilion.getBuiltYear());
-            }
-            if (pavilion.getLongitude() != null) {
-                existingPavilion.setLongitude(pavilion.getLongitude());
-            }
-            if (pavilion.getLatitude() != null) {
-                existingPavilion.setLatitude(pavilion.getLatitude());
-            }
-            if (pavilion.getDescription() != null) {
-                existingPavilion.setDescription(pavilion.getDescription());
-            }
-            if (pavilion.getArchitecturalStyle() != null) {
-                existingPavilion.setArchitecturalStyle(pavilion.getArchitecturalStyle());
-            }
-            if (pavilion.getVisitorRating() != null) {
-                existingPavilion.setVisitorRating(pavilion.getVisitorRating());
-            }
-            if (pavilion.getIsOpenToPublic() != null) {
-                existingPavilion.setIsOpenToPublic(pavilion.getIsOpenToPublic());
-            }
-            if (pavilion.getStructure() != null) {
-                existingPavilion.setStructure(pavilion.getStructure());
-            }
-            if (pavilion.getTopStyle() != null) {
-                existingPavilion.setTopStyle(pavilion.getTopStyle());
-            }
-            if (pavilion.getStreet() != null) {
-                existingPavilion.setStreet(pavilion.getStreet());
-            }
-            if (pavilion.getNotes() != null) {
-                existingPavilion.setNotes(pavilion.getNotes());
-            }
-            if (pavilion.getLocationDesc() != null) {
-                existingPavilion.setLocationDesc(pavilion.getLocationDesc());
-            }
+        Pavilion existingPavilion = pavilionService.getPavilionById(id)
+            .orElseThrow(() -> new NotFoundException("亭子不存在: " + id));
+        normalizePavilionFields(pavilion);
 
-            Pavilion updatedPavilion = pavilionService.updatePavilion(id, existingPavilion);
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "亭子更新成功");
-            response.put("data", updatedPavilion);
-            
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            logger.error("更新亭子失败", e);
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "更新亭子失败: " + e.getMessage());
-            
-            return ResponseEntity.internalServerError().body(response);
-        }
+        // 仅更新非空字段
+        if (pavilion.getChineseName() != null) existingPavilion.setChineseName(pavilion.getChineseName());
+        if (pavilion.getPavilionType() != null) existingPavilion.setPavilionType(pavilion.getPavilionType());
+        if (pavilion.getBuiltYear() != null) existingPavilion.setBuiltYear(pavilion.getBuiltYear());
+        if (pavilion.getLongitude() != null) existingPavilion.setLongitude(pavilion.getLongitude());
+        if (pavilion.getLatitude() != null) existingPavilion.setLatitude(pavilion.getLatitude());
+        if (pavilion.getDescription() != null) existingPavilion.setDescription(pavilion.getDescription());
+        if (pavilion.getArchitecturalStyle() != null) existingPavilion.setArchitecturalStyle(pavilion.getArchitecturalStyle());
+        if (pavilion.getVisitorRating() != null) existingPavilion.setVisitorRating(pavilion.getVisitorRating());
+        if (pavilion.getIsOpenToPublic() != null) existingPavilion.setIsOpenToPublic(pavilion.getIsOpenToPublic());
+        if (pavilion.getStructure() != null) existingPavilion.setStructure(pavilion.getStructure());
+        if (pavilion.getTopStyle() != null) existingPavilion.setTopStyle(pavilion.getTopStyle());
+        if (pavilion.getStreet() != null) existingPavilion.setStreet(pavilion.getStreet());
+        if (pavilion.getNotes() != null) existingPavilion.setNotes(pavilion.getNotes());
+        if (pavilion.getLocationDesc() != null) existingPavilion.setLocationDesc(pavilion.getLocationDesc());
+        if (pavilion.getAreaSize() != null) existingPavilion.setAreaSize(pavilion.getAreaSize());
+        if (pavilion.getHistoricalSignificance() != null) existingPavilion.setHistoricalSignificance(pavilion.getHistoricalSignificance());
+        if (pavilion.getConstructionPeriod() != null) existingPavilion.setConstructionPeriod(pavilion.getConstructionPeriod());
+        if (pavilion.getTicketPrice() != null) existingPavilion.setTicketPrice(pavilion.getTicketPrice());
+        if (pavilion.getLastRenovationYear() != null) existingPavilion.setLastRenovationYear(pavilion.getLastRenovationYear());
+        if (pavilion.getName() != null) existingPavilion.setName(pavilion.getName());
+
+        Pavilion updatedPavilion = pavilionService.updatePavilion(id, existingPavilion);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "亭子更新成功");
+        response.put("data", updatedPavilion);
+        return ResponseEntity.ok(response);
     }
-    
+
     /**
      * 删除亭子
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, Object>> deletePavilion(@PathVariable Long id) {
-        try {
-            logger.info("删除亭子 ID: {}", id);
+        logger.info("删除亭子 ID: {}", id);
 
-            Optional<Pavilion> existingPavilionOpt = pavilionService.getPavilionById(id);
-            if (existingPavilionOpt.isEmpty()) {
-                Map<String, Object> response = new HashMap<>();
-                response.put("success", false);
-                response.put("message", "亭子不存在");
-
-                return ResponseEntity.notFound().build();
-            }
-
-            pavilionService.deletePavilion(id);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("message", "亭子删除成功");
-
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            logger.error("删除亭子失败", e);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "删除亭子失败: " + e.getMessage());
-
-            return ResponseEntity.internalServerError().body(response);
+        if (pavilionService.getPavilionById(id).isEmpty()) {
+            throw new NotFoundException("亭子不存在: " + id);
         }
+        pavilionService.deletePavilion(id);
+
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("message", "亭子删除成功");
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -714,48 +598,53 @@ public class ThousandPavilionsController {
      */
     @GetMapping("/{pavilionId}/collectors")
     public ResponseEntity<Map<String, Object>> getPavilionCollectors(@PathVariable Long pavilionId) {
-        try {
-            List<PavilionCollector> collectors = collectorService.getCollectorsByPavilionId(pavilionId);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("data", collectors);
-            response.put("count", collectors.size());
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            logger.error("获取采集记录失败", e);
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", false);
-            response.put("message", "获取采集记录失败: " + e.getMessage());
-            return ResponseEntity.internalServerError().body(response);
+        List<PavilionCollector> collectors = collectorService.getCollectorsByPavilionId(pavilionId);
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("success", true);
+        response.put("data", collectors);
+        response.put("count", collectors.size());
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 添加采集记录
+     */
+    @PostMapping("/{pavilionId}/collectors")
+    public ResponseEntity<Map<String, Object>> createPavilionCollector(
+            @PathVariable Long pavilionId,
+            @RequestBody PavilionCollector collector) {
+        if (collector == null) {
+            throw new BusinessException("采集记录不能为空");
         }
+        logger.info("添加采集记录: pavilionId={}, collectorName={}", pavilionId, collector.getCollectorName());
+        if (pavilionService.getPavilionById(pavilionId).isEmpty()) {
+            throw new NotFoundException("亭子不存在: " + pavilionId);
+        }
+        collector.setId(null);
+        collector.setPavilionId(pavilionId);
+        PavilionCollector saved = collectorService.createCollector(collector);
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("success", true);
+        resp.put("message", "采集记录添加成功");
+        resp.put("data", saved);
+        return ResponseEntity.ok(resp);
     }
 
     /**
      * 导入亭子数据 (Excel/GeoJSON/CSV)
      */
     @PostMapping("/import")
-    public ResponseEntity<Map<String, Object>> importPavilions(@RequestParam("file") MultipartFile file) {
-        try {
-            if (file.isEmpty()) {
-                Map<String, Object> resp = new HashMap<>();
-                resp.put("success", false);
-                resp.put("message", "请选择文件");
-                return ResponseEntity.badRequest().body(resp);
-            }
-            PavilionImportResult result = pavilionImportService.importAuto(file);
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("success", true);
-            resp.put("message", String.format("导入完成: 成功%d, 失败%d",
-                result.getSuccessCount(), result.getErrorCount()));
-            resp.put("data", result);
-            return ResponseEntity.ok(resp);
-        } catch (Exception e) {
-            logger.error("导入失败", e);
-            Map<String, Object> resp = new HashMap<>();
-            resp.put("success", false);
-            resp.put("message", "导入失败: " + e.getMessage());
-            return ResponseEntity.internalServerError().body(resp);
+    public ResponseEntity<Map<String, Object>> importPavilions(@RequestParam("file") MultipartFile file) throws java.io.IOException {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("请选择文件");
         }
+        PavilionImportResult result = pavilionImportService.importAuto(file);
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("success", true);
+        resp.put("message", String.format("导入完成: 成功%d, 失败%d",
+            result.getSuccessCount(), result.getErrorCount()));
+        resp.put("data", result);
+        return ResponseEntity.ok(resp);
     }
 
     @GetMapping("/export/geojson")

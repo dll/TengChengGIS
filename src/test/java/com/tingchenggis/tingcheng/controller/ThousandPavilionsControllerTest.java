@@ -1,6 +1,7 @@
 package com.tingchenggis.tingcheng.controller;
 
 import com.tingchenggis.tingcheng.entity.Pavilion;
+import com.tingchenggis.tingcheng.service.NavigationService;
 import com.tingchenggis.tingcheng.service.PavilionCollectorService;
 import com.tingchenggis.tingcheng.service.PavilionExportService;
 import com.tingchenggis.tingcheng.service.PavilionImportService;
@@ -8,6 +9,7 @@ import com.tingchenggis.tingcheng.service.PavilionService;
 import com.tingchenggis.tingcheng.service.ThousandPavilionsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
@@ -22,7 +24,7 @@ import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(ThousandPavilionsController.class)
+@WebMvcTest(value = ThousandPavilionsController.class, excludeAutoConfiguration = SecurityAutoConfiguration.class)
 class ThousandPavilionsControllerTest {
 
     @Autowired
@@ -38,6 +40,8 @@ class ThousandPavilionsControllerTest {
     private PavilionExportService pavilionExportService;
     @MockBean
     private PavilionCollectorService collectorService;
+    @MockBean
+    private NavigationService navigationService;
 
     @Test
     void getAllPavilionLocations() throws Exception {
@@ -186,6 +190,34 @@ class ThousandPavilionsControllerTest {
 
         mockMvc.perform(get("/thousand-pavilions/nearby-facilities/1"))
             .andExpect(status().isOk());
+    }
+
+    @Test
+    void getRealTimeNavigation() throws Exception {
+        Pavilion p1 = new Pavilion("a", "亭A", null, null, 118.3, 32.3, "HISTORICAL");
+        p1.setId(1L);
+        Pavilion p2 = new Pavilion("b", "亭B", null, null, 118.4, 32.4, "MODERN");
+        p2.setId(2L);
+        when(pavilionService.getPavilionById(1L)).thenReturn(Optional.of(p1));
+        when(pavilionService.getPavilionById(2L)).thenReturn(Optional.of(p2));
+
+        Map<String, Object> navResult = new java.util.LinkedHashMap<>();
+        navResult.put("totalSteps", 5);
+        navResult.put("steps", List.of());
+        when(navigationService.getTurnByTurnNavigation(anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyString()))
+            .thenReturn(navResult);
+
+        mockMvc.perform(get("/thousand-pavilions/navigation/1/2"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalSteps").value(5));
+    }
+
+    @Test
+    void getRealTimeNavigation_notFound() throws Exception {
+        when(pavilionService.getPavilionById(99L)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/thousand-pavilions/navigation/99/1"))
+            .andExpect(status().isNotFound());
     }
 
     @Test

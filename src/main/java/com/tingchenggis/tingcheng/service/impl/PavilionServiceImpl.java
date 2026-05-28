@@ -6,6 +6,7 @@ import com.tingchenggis.tingcheng.service.PavilionCollectorService;
 import com.tingchenggis.tingcheng.service.PavilionService;
 import com.tingchenggis.tingcheng.service.PavilionStats;
 import com.tingchenggis.tingcheng.service.ThousandPavilionsService;
+import com.tingchenggis.tingcheng.util.GeoUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -160,7 +161,12 @@ public class PavilionServiceImpl implements PavilionService {
     @Override
     public List<Pavilion> findByGeographicRange(String wktText) {
         logger.info("根据地理位置范围查询: {}", wktText);
-        return pavilionRepository.findByGeographicRange(wktText);
+        double[] bbox = GeoUtils.parseWktBbox(wktText);
+        if (bbox == null) {
+            logger.warn("无效的WKT格式: {}", wktText);
+            return List.of();
+        }
+        return pavilionRepository.findByGeographicRange(bbox[0], bbox[1], bbox[2], bbox[3]);
     }
 
     @Override

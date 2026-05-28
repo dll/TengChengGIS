@@ -54,11 +54,15 @@ public interface PavilionRepository extends JpaRepository<Pavilion, Long> {
     /**
      * 根据地理位置范围查找亭子
      * 
-     * @param wktText WKT格式的空间范围描述
-     * @return 在指定范围内的亭子列表
+     * @param minLng 最小经度
+     * @param maxLng 最大经度
+     * @param minLat 最小纬度
+     * @param maxLat 最大纬度
+     * @return 在指定矩形范围内的亭子列表
      */
-    @Query(value = "SELECT * FROM pavilions WHERE ST_Intersects(geometry, ST_GeomFromText(:wktText))", nativeQuery = true)
-    List<Pavilion> findByGeographicRange(@Param("wktText") String wktText);
+    @Query("SELECT p FROM Pavilion p WHERE p.longitude BETWEEN :minLng AND :maxLng AND p.latitude BETWEEN :minLat AND :maxLat")
+    List<Pavilion> findByGeographicRange(@Param("minLng") Double minLng, @Param("maxLng") Double maxLng,
+                                         @Param("minLat") Double minLat, @Param("maxLat") Double maxLat);
 
     /**
      * 查找开放参观的亭子

@@ -4,6 +4,7 @@ import com.tingchenggis.tingcheng.entity.ScenicArea;
 import com.tingchenggis.tingcheng.repository.ScenicAreaRepository;
 import com.tingchenggis.tingcheng.service.ScenicAreaCollectorService;
 import com.tingchenggis.tingcheng.service.ScenicAreaService;
+import com.tingchenggis.tingcheng.util.GeoUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -92,7 +93,11 @@ public class ScenicAreaServiceImpl implements ScenicAreaService {
 
     @Override
     public List<ScenicArea> findByGeographicRange(String wktText) {
-        return scenicAreaRepository.findByGeographicRange(wktText);
+        double[] bbox = GeoUtils.parseWktBbox(wktText);
+        if (bbox == null) {
+            return List.of();
+        }
+        return scenicAreaRepository.findByGeographicRange(bbox[0], bbox[1], bbox[2], bbox[3]);
     }
 
     @Override

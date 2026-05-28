@@ -2,7 +2,11 @@ package com.tingchenggis.tingcheng.service.impl;
 
 import com.tingchenggis.tingcheng.entity.Pavilion;
 import com.tingchenggis.tingcheng.repository.PavilionRepository;
+import com.tingchenggis.tingcheng.service.OverpassPoiService;
 import com.tingchenggis.tingcheng.service.ThousandPavilionsService;
+import com.tingchenggis.tingcheng.service.VrArService;
+import com.tingchenggis.tingcheng.util.GeoUtils;
+import com.tingchenggis.tingcheng.util.TspSolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -22,14 +26,19 @@ import java.util.stream.Collectors;
 public class ThousandPavilionsServiceImpl implements ThousandPavilionsService {
 
     private static final Logger logger = LoggerFactory.getLogger(ThousandPavilionsServiceImpl.class);
-    private static final double EARTH_RADIUS_KM = 6371.0;
     private static final double WALKING_SPEED_KMH = 4.0;
     private static final double STOP_DURATION_MIN = 30.0;
 
     private final PavilionRepository pavilionRepository;
+    private final OverpassPoiService overpassPoiService;
+    private final VrArService vrArService;
 
-    public ThousandPavilionsServiceImpl(PavilionRepository pavilionRepository) {
+    public ThousandPavilionsServiceImpl(PavilionRepository pavilionRepository,
+                                         OverpassPoiService overpassPoiService,
+                                         VrArService vrArService) {
         this.pavilionRepository = pavilionRepository;
+        this.overpassPoiService = overpassPoiService;
+        this.vrArService = vrArService;
     }
 
     @Override
@@ -49,9 +58,9 @@ public class ThousandPavilionsServiceImpl implements ThousandPavilionsService {
             return 0.0;
         }
 
-        return calculateHaversineDistance(
-            pavilion1.getLatitude(), pavilion1.getLongitude(),
-            pavilion2.getLatitude(), pavilion2.getLongitude()
+        return GeoUtils.haversineKm(
+            pavilion1.getLongitude(), pavilion1.getLatitude(),
+            pavilion2.getLongitude(), pavilion2.getLatitude()
         );
     }
 
@@ -81,98 +90,62 @@ public class ThousandPavilionsServiceImpl implements ThousandPavilionsService {
             return new ArrayList<>(ids);
         }
 
-        List<Long> route = new ArrayList<>(ids);
+        int[] tour = new int[ids.size()];
+        for (int i = 0; i < ids.size(); i++) tour[i] = i;
 
         double[][] distanceMatrix = buildDistanceMatrix(ids);
-        boolean improved = true;
-        int iterations = 0;
-        int maxIterations = 1000;
+        TspSolver.improveOpen(tour, distanceMatrix);
 
-        while (improved && iterations < maxIterations) {
-            improved = false;
-            iterations++;
+        List<Long> result = new ArrayList<>(ids.size());
+        for (int idx : tour) result.add(ids.get(idx));
 
-            for (int i = 1; i < route.size() - 1; i++) {
-                for (int j = i + 1; j < route.size(); j++) {
-                    List<Long> newRoute = twoOptSwap(route, i, j);
-                    double newDistance = calculateTotalDistance(newRoute, distanceMatrix);
-                    double oldDistance = calculateTotalDistance(route, distanceMatrix);
+        double finalDist = calculateTotalDistanceIndices(tour, distanceMatrix);
+        logger.info("2-opt算法完成, 最终距离: {} km",
+            String.format("%.2f", finalDist));
 
-                    if (newDistance < oldDistance) {
-                        route = newRoute;
-                        improved = true;
-                    }
-                }
-            }
-        }
-
-        logger.info("2-opt算法完成，迭代次数: {}, 最终距离: {} km",
-            iterations, String.format("%.2f", calculateTotalDistance(route, distanceMatrix)));
-
-        return route;
+        return result;
     }
 
     /**
-     * 2-opt交换操作
-     */
-    private List<Long> twoOptSwap(List<Long> route, int i, int j) {
-        List<Long> newRoute = new ArrayList<>();
-
-        for (int k = 0; k < i; k++) {
-            newRoute.add(route.get(k));
-        }
-
-        for (int k = j; k >= i; k--) {
-            newRoute.add(route.get(k));
-        }
-
-        for (int k = j + 1; k < route.size(); k++) {
-            newRoute.add(route.get(k));
-        }
-
-        return newRoute;
-    }
-
-    /**
-     * 构建距离矩阵
+     * 构建距离矩阵：一次性把所有亭子查回内存，再两两 Haversine
+     * （此前实现对每对调用 findById，N=228 时产生 5 万+ 次 SQL）
      */
     private double[][] buildDistanceMatrix(List<Long> ids) {
         int n = ids.size();
         double[][] matrix = new double[n][n];
+        if (n == 0) return matrix;
+
+        Map<Long, Pavilion> byId = pavilionRepository.findAllById(ids).stream()
+            .collect(Collectors.toMap(Pavilion::getId, p -> p));
 
         for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
-                if (i == j) {
-                    matrix[i][j] = 0.0;
-                } else {
-                    matrix[i][j] = calculateDistance(ids.get(i), ids.get(j));
-                }
+            Pavilion a = byId.get(ids.get(i));
+            for (int j = i + 1; j < n; j++) {
+                Pavilion b = byId.get(ids.get(j));
+                double d = haversineSafe(a, b);
+                matrix[i][j] = d;
+                matrix[j][i] = d;
             }
         }
-
         return matrix;
     }
 
-    /**
-     * 计算路线总距离
-     */
-    private double calculateTotalDistance(List<Long> route, double[][] distanceMatrix) {
-        double total = 0.0;
-        for (int i = 0; i < route.size() - 1; i++) {
-            int fromIndex = getIndex(route.get(i), route);
-            int toIndex = getIndex(route.get(i + 1), route);
-            total += distanceMatrix[fromIndex][toIndex];
+    private double haversineSafe(Pavilion a, Pavilion b) {
+        if (a == null || b == null
+            || a.getLongitude() == null || a.getLatitude() == null
+            || b.getLongitude() == null || b.getLatitude() == null) {
+            return 0.0;
         }
-        return total;
+        return GeoUtils.haversineKm(a.getLongitude(), a.getLatitude(),
+                                     b.getLongitude(), b.getLatitude());
     }
 
-    private int getIndex(Long id, List<Long> route) {
-        for (int i = 0; i < route.size(); i++) {
-            if (route.get(i).equals(id)) {
-                return i;
-            }
+    private double calculateTotalDistanceIndices(int[] route, double[][] distanceMatrix) {
+        double total = 0.0;
+        for (int i = 0; i < route.length - 1; i++) {
+            total += distanceMatrix[route[i]][route[i + 1]];
         }
-        return 0;
+        return total;
     }
 
     /**
@@ -243,18 +216,12 @@ public class ThousandPavilionsServiceImpl implements ThousandPavilionsService {
         double[][] matrix = new double[n][n];
 
         for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
-                if (i == j) {
-                    matrix[i][j] = 0.0;
-                } else {
-                    matrix[i][j] = calculateDistance(
-                        pavilions.get(i).getId(),
-                        pavilions.get(j).getId()
-                    );
-                }
+            for (int j = i + 1; j < n; j++) {
+                double d = haversineSafe(pavilions.get(i), pavilions.get(j));
+                matrix[i][j] = d;
+                matrix[j][i] = d;
             }
         }
-
         return matrix;
     }
 
@@ -351,22 +318,6 @@ public class ThousandPavilionsServiceImpl implements ThousandPavilionsService {
     }
 
     /**
-     * 计算两点间的Haversine距离
-     */
-    private double calculateHaversineDistance(double lat1, double lon1, double lat2, double lon2) {
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(lon2 - lon1);
-
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                   Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                   Math.sin(dLon / 2) * Math.sin(dLon / 2);
-
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-        return EARTH_RADIUS_KM * c;
-    }
-
-    /**
      * 获取智能规划的游览路线（考虑多个因素）
      */
     public Map<String, Object> getSmartTourPlan(String startPavilionId, String endPavilionId,
@@ -449,7 +400,7 @@ public class ThousandPavilionsServiceImpl implements ThousandPavilionsService {
     }
 
     /**
-     * 获取附近设施信息
+     * 获取附近设施信息（真实POI数据，来自OpenStreetMap）
      */
     public Map<String, Object> getNearbyFacilities(Long pavilionId, double radiusKm) {
         Map<String, Object> result = new HashMap<>();
@@ -466,14 +417,13 @@ public class ThousandPavilionsServiceImpl implements ThousandPavilionsService {
             return result;
         }
 
-        List<Map<String, Object>> facilities = new ArrayList<>();
+        List<Map<String, Object>> facilities = overpassPoiService.queryNearbyPois(
+            pavilion.getLatitude(), pavilion.getLongitude(), radiusKm);
 
-        facilities.add(createFacility("停车场", "P", 32.315, 118.320, "琅琊山景区停车场"));
-        facilities.add(createFacility("洗手间", "WC", 32.314, 118.319, "景区公共卫生间"));
-        facilities.add(createFacility("餐饮", "🍽️", 32.313, 118.318, "景区餐厅"));
-        facilities.add(createFacility("休息区", "🪑", 32.312, 118.317, "游客休息中心"));
-        facilities.add(createFacility("医疗站", "🏥", 32.311, 118.316, "景区医务室"));
-        facilities.add(createFacility("纪念品店", "🎁", 32.310, 118.315, "亭城文化纪念品店"));
+        if (facilities.isEmpty()) {
+            logger.warn("Overpass returned no facilities for pavilion {}, falling back to mock data", pavilionId);
+            facilities = buildFallbackFacilities();
+        }
 
         result.put("pavilion", pavilion.getChineseName());
         result.put("centerLatitude", pavilion.getLatitude());
@@ -484,14 +434,25 @@ public class ThousandPavilionsServiceImpl implements ThousandPavilionsService {
         return result;
     }
 
-    private Map<String, Object> createFacility(String name, String icon, double lat, double lon, String description) {
-        Map<String, Object> facility = new HashMap<>();
-        facility.put("name", name);
-        facility.put("icon", icon);
-        facility.put("latitude", lat);
-        facility.put("longitude", lon);
-        facility.put("description", description);
-        return facility;
+    private List<Map<String, Object>> buildFallbackFacilities() {
+        List<Map<String, Object>> fallback = new ArrayList<>();
+        Map<String, Object> a = new LinkedHashMap<>();
+        a.put("name", "停车场"); a.put("category", "parking"); a.put("icon", "P");
+        a.put("latitude", 32.315); a.put("longitude", 118.320); a.put("distance", 0.5);
+        fallback.add(a);
+        Map<String, Object> b = new LinkedHashMap<>();
+        b.put("name", "洗手间"); b.put("category", "toilets"); b.put("icon", "WC");
+        b.put("latitude", 32.314); b.put("longitude", 118.319); b.put("distance", 0.3);
+        fallback.add(b);
+        Map<String, Object> c = new LinkedHashMap<>();
+        c.put("name", "餐厅"); c.put("category", "restaurant"); c.put("icon", "\uD83C\uDF7D\uFE0F");
+        c.put("latitude", 32.313); c.put("longitude", 118.318); c.put("distance", 0.4);
+        fallback.add(c);
+        Map<String, Object> d = new LinkedHashMap<>();
+        d.put("name", "游客中心"); d.put("category", "information"); d.put("icon", "\u2139\uFE0F");
+        d.put("latitude", 32.312); d.put("longitude", 118.317); d.put("distance", 0.6);
+        fallback.add(d);
+        return fallback;
     }
 
     /**
@@ -611,38 +572,9 @@ public class ThousandPavilionsServiceImpl implements ThousandPavilionsService {
     }
 
     /**
-     * 获取VR体验信息
+     * 获取VR体验信息（真实内容，含3D场景、AR叠加层）
      */
     public Map<String, Object> getVRExperience(Long pavilionId) {
-        Map<String, Object> vrInfo = new HashMap<>();
-
-        Optional<Pavilion> pavilionOpt = pavilionRepository.findById(pavilionId);
-        if (pavilionOpt.isEmpty()) {
-            vrInfo.put("error", "亭子不存在");
-            return vrInfo;
-        }
-
-        Pavilion pavilion = pavilionOpt.get();
-
-        vrInfo.put("pavilionId", pavilion.getId());
-        vrInfo.put("pavilionName", pavilion.getChineseName());
-        vrInfo.put("hasVR", true);
-        vrInfo.put("vrUrl", "/vr/" + pavilion.getName().toLowerCase() + "/index.html");
-        vrInfo.put("panoramaUrl", "/vr/panorama/" + pavilion.getId() + ".jpg");
-        vrInfo.put("audioGuideUrl", "/audio/guides/" + pavilion.getId() + ".mp3");
-        vrInfo.put("vrFeatures", Arrays.asList(
-            "360°全景漫游",
-            "历史场景还原",
-            "语音讲解",
-            "互动问答",
-            "AR实景导航"
-        ));
-        vrInfo.put("compatibility", Arrays.asList(
-            "PC浏览器",
-            "移动端浏览器",
-            "VR头显设备"
-        ));
-
-        return vrInfo;
+        return vrArService.getVrExperience(pavilionId);
     }
 }

@@ -60,6 +60,8 @@ public class AdminDivisionServiceImpl implements AdminDivisionService {
         existing.setParentId(adminDivision.getParentId());
         existing.setParentName(adminDivision.getParentName());
         existing.setGeomWkt(adminDivision.getGeomWkt());
+        existing.setLongitude(adminDivision.getLongitude());
+        existing.setLatitude(adminDivision.getLatitude());
         existing.setAreaSize(adminDivision.getAreaSize());
         existing.setPopulation(adminDivision.getPopulation());
         existing.setAdminCode(adminDivision.getAdminCode());
@@ -93,51 +95,43 @@ public class AdminDivisionServiceImpl implements AdminDivisionService {
     @Override
     public List<Map<String, Object>> getTree() {
         List<AdminDivision> all = adminDivisionRepository.findAll();
-        Map<Long, List<Map<String, Object>>> childrenMap = new LinkedHashMap<>();
-        List<Map<String, Object>> roots = new ArrayList<>();
+        Map<Long, List<AdminDivision>> childrenMap = new LinkedHashMap<>();
+        List<AdminDivision> roots = new ArrayList<>();
 
         for (AdminDivision ad : all) {
-            Map<String, Object> node = new LinkedHashMap<>();
-            node.put("id", ad.getId());
-            node.put("name", ad.getName());
-            node.put("chineseName", ad.getChineseName());
-            node.put("adminLevel", ad.getAdminLevel());
-            node.put("parentId", ad.getParentId());
-            node.put("parentName", ad.getParentName());
-            node.put("children", new ArrayList<>());
-            childrenMap.computeIfAbsent(ad.getId(), k -> new ArrayList<>());
-            childrenMap.put(ad.getId(), (List<Map<String, Object>>) node.get("children"));
-
             if (ad.getParentId() == null) {
-                roots.add(node);
+                roots.add(ad);
             } else {
-                childrenMap.computeIfAbsent(ad.getParentId(), k -> new ArrayList<>()).add(node);
+                childrenMap.computeIfAbsent(ad.getParentId(), k -> new ArrayList<>()).add(ad);
             }
         }
 
-        for (AdminDivision ad : all) {
-            List<Map<String, Object>> children = childrenMap.get(ad.getId());
-            if (children != null) {
-                for (Map<String, Object> root : roots) {
-                    attachChildren(root, ad.getId(), children);
-                }
-            }
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (AdminDivision root : roots) {
+            result.add(buildTreeNode(root, childrenMap));
         }
-
-        return roots;
+        return result;
     }
 
-    private void attachChildren(Map<String, Object> node, Long targetId, List<Map<String, Object>> children) {
-        if (targetId.equals(node.get("id"))) {
-            node.put("children", children);
-            return;
-        }
-        List<Map<String, Object>> nodeChildren = (List<Map<String, Object>>) node.get("children");
-        if (nodeChildren != null) {
-            for (Map<String, Object> child : nodeChildren) {
-                attachChildren(child, targetId, children);
+    private Map<String, Object> buildTreeNode(AdminDivision ad, Map<Long, List<AdminDivision>> childrenMap) {
+        Map<String, Object> node = new LinkedHashMap<>();
+        node.put("id", ad.getId());
+        node.put("name", ad.getName());
+        node.put("chineseName", ad.getChineseName());
+        node.put("adminLevel", ad.getAdminLevel());
+        node.put("parentId", ad.getParentId());
+        node.put("parentName", ad.getParentName());
+        List<AdminDivision> children = childrenMap.get(ad.getId());
+        if (children != null && !children.isEmpty()) {
+            List<Map<String, Object>> childNodes = new ArrayList<>();
+            for (AdminDivision child : children) {
+                childNodes.add(buildTreeNode(child, childrenMap));
             }
+            node.put("children", childNodes);
+        } else {
+            node.put("children", new ArrayList<>());
         }
+        return node;
     }
 
     @Override
