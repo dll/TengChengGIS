@@ -1,17 +1,25 @@
 package com.tingchenggis.tingcheng.config;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tingchenggis.tingcheng.entity.Pavilion;
 import com.tingchenggis.tingcheng.service.AppUserService;
 import com.tingchenggis.tingcheng.service.PavilionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
+import java.io.InputStream;
+import java.util.List;
+
 /**
- * 应用启动检查器
+ * 应用启动初始化
  *
- * 1. 检查亭子数据是否已初始化
- * 2. 播种默认账号：管理员 419116 / 注册用户 206004（密码与账号相同）
+ * 1. 播种默认账号：管理员 419116 / 注册用户 206004
+ * 2. 如 DB 为空，从 classpath 加载样例亭子数据
+ * 3. 提示完整数据导入
  */
 @Component
 public class DataInitializer implements CommandLineRunner {
@@ -20,16 +28,18 @@ public class DataInitializer implements CommandLineRunner {
 
     private final PavilionService pavilionService;
     private final AppUserService appUserService;
+    private final ObjectMapper objectMapper;
 
-    public DataInitializer(PavilionService pavilionService, AppUserService appUserService) {
+    public DataInitializer(PavilionService pavilionService, AppUserService appUserService, ObjectMapper objectMapper) {
         this.pavilionService = pavilionService;
         this.appUserService = appUserService;
+        this.objectMapper = objectMapper;
     }
 
     @Override
     public void run(String... args) {
         seedUsers();
-        seedPavilionsHint();
+        seedSamplePavilions();
     }
 
     private void seedUsers() {
@@ -45,22 +55,34 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
-    private void seedPavilionsHint() {
+    private void seedSamplePavilions() {
         long count = 0;
         try {
             count = pavilionService.getAllPavilions().size();
         } catch (Exception e) {
             logger.info("亭子数据表尚未初始化");
+            return;
         }
 
-        if (count == 0) {
-            logger.info("==============================================");
-            logger.info("  当前无亭子数据，请通过 Excel 导入 228 条数据");
-            logger.info("  导入接口: POST /thousand-pavilions/import");
-            logger.info("  文件: data/千亭.xlsx");
-            logger.info("==============================================");
-        } else {
+        if (count > 0) {
             logger.info("已加载 {} 个亭子数据，交通路网将按需动态生成", count);
+            return;
+        }
+
+        // 从 classpath 种子文件加载样例数据
+        try (InputStream in = new ClassPathResource("seed/sample-pavilions.json").getInputStream()) {
+            List<Pavilion> samples = objectMapper.readValue(in, new TypeReference<List<Pavilion>>() {});
+            for (Pavilion p : samples) {
+                p.setId(null);
+                pavilionService.createPavilion(p);
+            }
+            logger.warn("================================================================");
+            logger.warn("  已自动加载 {} 个样例亭子（琅琊山景区示范数据）", samples.size());
+            logger.warn("  完整 228 条数据请通过 POST /thousand-pavilions/import 上传");
+            logger.warn("  文件: data/千亭.xlsx");
+            logger.warn("================================================================");
+        } catch (Exception e) {
+            logger.warn("加载样例亭子数据失败: {} （不影响启动，可通过 Excel 导入）", e.getMessage());
         }
     }
 }

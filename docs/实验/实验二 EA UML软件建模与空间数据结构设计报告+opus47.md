@@ -46,7 +46,7 @@
 | UC-01 | 浏览多源底图 | 前端 `index.html` |
 | UC-02 | 名称模糊搜索亭子 | `PavilionController.findByNameContaining` |
 | UC-03 | 查看亭子详情 | `PavilionController.getPavilionById` |
-| UC-04 | WKT 范围查询 | `PavilionController.findByGeographicRange`（POST 体 `wktText`） |
+| UC-04 | WKT 范围查询 | `PavilionController.findByGeographicRange`（`GET ?wktText=`） |
 | UC-05 | 距离计算 | `PavilionService.calculateDistance(id1, id2)` |
 | UC-06 | 千亭 TSP 最优路线 | `ThousandPavilionsService.getOptimalTraversalRoute()` |
 | UC-07 | AI 文化解说 | `AiController.cultureIntro` / `historicalStory` |
@@ -207,8 +207,7 @@ PavilionController → 前端: { success, data, count } JSON
 
 ```
 用户 → 前端: 矩形框选 → 生成 WKT POLYGON
-前端 → PavilionController: POST /pavilions/geographic-search
-       Body: { "wktText": "POLYGON((118.3 32.2, 118.4 32.2, ...))" }
+前端 → PavilionController: GET /pavilions/geographic-search?wktText=POLYGON((118.3 32.2,...))
 PavilionController → PavilionService: findByGeographicRange(wktText)
 PavilionService → PavilionRepository: 解析 WKT 边界 → 调 findByGeographicRange(minLng,maxLng,minLat,maxLat)
 PavilionRepository → DB: WHERE longitude BETWEEN ? AND ? AND latitude BETWEEN ? AND ?
@@ -216,7 +215,7 @@ DB → ... → 前端
 前端 → Leaflet: 渲染要素
 ```
 
-> 注：`PavilionController` 接收的是 `wktText` 字符串；`PavilionRepository.findByGeographicRange` 是带 4 个 Double 参数的底层方法。两层命名近似但参数形态不同——前一版报告把这两层混淆了。
+> 注：`PavilionController` 在 query 中接收 `wktText` 字符串；`PavilionRepository.findByGeographicRange` 是带 4 个 Double 参数的底层方法。两层命名近似但参数形态不同。`ScenicAreaController.geographic-search` 也已统一为 GET + `?wktText=` 风格，保持 API 一致性。
 
 #### 2.3.3 TSP 千亭遍历
 
@@ -391,13 +390,14 @@ SELECT * FROM pavilions
 
 ### 4.2 与 deepseek 版本的主要修正
 
+实验二独有（建模/数据库设计层面）：
+
 | 原报告 | 实际情况 |
 |--------|---------|
 | `Pavilion` 含 `getFullAddress() / calculateGcjCoordinates()` 方法 | 实体类无此方法，GCJ-02 由外部 `CoordinateTransform.wgs84ToGcj02` 计算并通过 setter 写入 |
-| `TspSolver.solveTwoOpt(matrix)` | 方法不存在，实际为 `improveCyclic` / `improveOpen` |
-| `Repository.findByGeographicRange` 在 Controller 中直接接受 4 个 Double 参数 | Controller 接受 POST 体 `{"wktText": "..."}`，由 Service 层解析后再调 4 参数 Repository 方法 |
 | 实体使用 `@PrePersist` + `@PreUpdate` 双重生命周期注解 | 仅 `@PreUpdate`；`createdAt` 在构造器内手动赋值 |
-| 项目使用 Lombok `@Data` | `pom.xml` 未引入 Lombok；getter/setter 全部手写 |
+
+> 跨报告共识修正点（API 端点、`solveTwoOpt` 不存在、Lombok 未引入、JaCoCo 已配置等）汇总于实验六报告 §7.2。
 
 ### 4.3 课后思考
 

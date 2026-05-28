@@ -35,8 +35,9 @@
 | Apache POI | 5.2.5 | `pom.xml`，用于 Excel 导入 |
 | JJWT | 0.12.5 | `pom.xml`，JWT 认证 |
 | Spring Security | 3.2 | `pom.xml`，含 BCryptPasswordEncoder |
+| JaCoCo | 0.8.12 | `pom.xml` 已配置 `prepare-agent` + `report` |
 
-> 注：项目并未引入 Lombok 依赖（实体类全部为手写 getter/setter），亦未配置 JaCoCo。
+> 注：项目并未引入 Lombok 依赖（实体类全部为手写 getter/setter）。JaCoCo 已配置但未设覆盖率阈值。
 
 ---
 
@@ -67,7 +68,7 @@ tingcheng:
   ai:
     active-provider: deepseek
     deepseek-api-url: "https://api.deepseek.com/v1/chat/completions"
-    deepseek-model: "deepseek-v4-flash"
+    deepseek-model: "deepseek-chat"
     zhipu-api-url:    "https://open.bigmodel.cn/api/paas/v4/chat/completions"
     zhipu-model:      "glm-4"
     openai-api-url:   "https://api.openai.com/v1/chat/completions"
@@ -107,7 +108,7 @@ tingcheng:
 | 模块 | 实际控制器 | 主要端点（节选） |
 |------|-----------|----------------|
 | 亭子管理 | `PavilionController` | `POST/GET/PUT/DELETE /pavilions/...`、`/pavilions/search`、`/pavilions/by-year-range`、`/pavilions/popular`、`/pavilions/stats` |
-| 亭子地理查询 | `PavilionController` | `POST /pavilions/geographic-search`（**Body 是 `{"wktText": "..."}`**，不是 minLng/maxLng） |
+| 亭子地理查询 | `PavilionController` | `GET /pavilions/geographic-search?wktText=...`（query 参数，不是 4 个 Double） |
 | 亭子GIS服务 | `PavilionGISController` | `/pavilions-gis/optimal-path` 等 |
 | 千亭遍历 | `ThousandPavilionsController` | `/thousand-pavilions/locations`、`/route/{from}/{to}`、`/optimal-route`、`/smart-tour`、`/import` |
 | 景区/区划 | `ScenicAreaController` / `AdminDivisionController` | CRUD + 边界查询 |
@@ -194,12 +195,14 @@ tingcheng:
 
 ### 6.2 与 deepseek 版本报告的主要修正
 
+实验一独有：
+
 | 原报告描述 | 实际情况 |
 |-----------|---------|
-| `geographic-search` 接受 `minLng/maxLng/minLat/maxLat` JSON | 实际接受 `{"wktText": "..."}`；`PavilionRepository.findByGeographicRange(minLng,maxLng,minLat,maxLat)` 是底层方法签名，但 Controller 入参不同 |
 | 项目使用 `LocationDecorator` 等 Lombok 注解 | 项目未引入 Lombok 依赖 |
-| AI 模型默认 `deepseek-chat` | `application.yml` 默认 `deepseek-v4-flash` |
 | 默认账号 admin/admin、user/user | 实际为 `419116/419116`、`206004/206004` |
+
+> 跨报告共识修正点（API 端点形态、`solveTwoOpt` 不存在、JaCoCo 已配置等）汇总于实验六报告 §7.2。
 
 ### 6.3 课后思考
 

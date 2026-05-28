@@ -53,61 +53,32 @@
 ```
 TingChengGIS项目 (1.0)
 │
-├── 1.1 需求分析阶段 (W1–W2)
-│   ├── 1.1.1 需求调研（用户访谈、竞品分析）              4h+4h
-│   ├── 1.1.2 功能需求 + 非功能需求分析                    6h+6h
-│   ├── 1.1.3 空间需求（坐标系/数据类型/OGC标准）          4h+4h
-│   ├── 1.1.4 SRS 文档编写 + 评审                         6h+2h
+├── 1.1 需求分析阶段 (W1–W2)        合计 ~36h
+│   需求调研 / 功能与非功能需求 / 空间需求 / SRS 编写与评审
 │
-├── 1.2 系统设计阶段 (W3–W4)
-│   ├── 1.2.1 架构设计（分层 + 技术选型 + API 规范）       6h+2h+4h
-│   ├── 1.2.2 数据库设计
-│   │   ├── 概念模型/逻辑模型                              4h+4h
-│   │   ├── 空间字段策略（WKT 文本 + 双坐标列）            4h
-│   │   └── 索引策略（H2 普通索引 / PostGIS GIST）         4h
-│   ├── 1.2.3 UML 建模（用例 + 类图 + 时序 + 包图）        4h+4h+4h
-│   └── 1.2.4 设计评审                                     2h
+├── 1.2 系统设计阶段 (W3–W4)        合计 ~38h
+│   架构设计 / 数据库设计（含空间字段策略与索引）/ UML 四图 / 设计评审
 │
-├── 1.3 后端开发阶段 (W5–W10)
-│   ├── 1.3.1 框架与配置（AppConfig/WebConfig/Security）   12h
-│   ├── 1.3.2 实体层（11 个实体）                          12h
-│   ├── 1.3.3 数据访问层（11 个 Repository）               16h
-│   ├── 1.3.4 亭子模块（含 GIS 控制器）                    24h
-│   ├── 1.3.5 千亭遍历 + TSP（improveCyclic / improveOpen） 32h
-│   ├── 1.3.6 多模式交通 + OSRM 集成（RoutingClient）      24h
-│   ├── 1.3.7 AI 多 provider 集成 + 模板降级               16h
-│   ├── 1.3.8 数据导入导出（Excel/GeoJSON/CSV）            16h
-│   ├── 1.3.9 OGC 代理（OgcProxyController）              12h
-│   ├── 1.3.10 OSM 数据导入 + 坐标批量校正                 12h
-│   └── 1.3.11 用户认证（JWT + BCrypt + 角色）             12h
+├── 1.3 后端开发阶段 (W5–W10)       合计 ~188h
+│   框架与配置 / 实体 / Repository / 亭子模块 /
+│   千亭遍历 + TSP / 多模式交通 + OSRM /
+│   AI 多 provider / 导入导出 / OGC 代理 / OSM 导入 / JWT 认证
 │
-├── 1.4 前端开发阶段 (W7–W12)
-│   ├── 1.4.1 SPA 框架 + Bootstrap 暗色主题                 8h
-│   ├── 1.4.2 Leaflet 2D 地图 + 多源底图                  16h
-│   ├── 1.4.3 Cesium 3D 地球                              12h
-│   ├── 1.4.4 GCJ-02/WGS-84 前端转换                       4h
-│   ├── 1.4.5 搜索 / 筛选 / 列表面板                       8h
-│   ├── 1.4.6 绘图 + 编辑                                  8h
-│   ├── 1.4.7 路线动画 + TSP 可视化                        6h
-│   ├── 1.4.8 OGC 图层管理                                 4h
-│   └── 1.4.9 前后端联调                                   16h
+├── 1.4 前端开发阶段 (W7–W12)       合计 ~82h
+│   SPA 框架 / Leaflet 2D + Cesium 3D / 坐标转换 /
+│   搜索筛选 / 绘图编辑 / 路线动画 / OGC 图层管理 / 前后端联调
 │
-├── 1.5 测试阶段 (W11–W14)
-│   ├── 1.5.1 单元测试（util / service.impl）              24h
-│   ├── 1.5.2 控制器集成测试（@WebMvcTest）                16h
-│   ├── 1.5.3 Repository 测试（@DataJpaTest）              8h
-│   ├── 1.5.4 空间精度专项                                 8h
-│   └── 1.5.5 端到端 / 性能基准（手工）                    8h
+├── 1.5 测试阶段 (W11–W14)          合计 ~64h
+│   单元测试 / 控制器集成 / Repository / 空间精度 / 端到端基准
 │
-├── 1.6 部署与维护 (W13–W16)
-│   ├── 1.6.1 部署脚本 + 环境配置                          8h
-│   ├── 1.6.2 用户手册 / 技术文档 / API 文档              16h
-│   ├── 1.6.3 维护策略                                     4h
-│   └── 1.6.4 空间数据更新流程                             4h
+├── 1.6 部署与维护 (W13–W16)        合计 ~32h
+│   部署脚本 / 用户手册 + API 文档 / 维护策略 / 空间数据更新流程
 │
 └── 1.7 项目管理（贯穿全程）
-    ├── 进度管理 / 风险管理 / 质量管理 / 配置管理（持续）
+    进度 / 风险 / 质量 / 配置管理
 ```
+
+> 三级任务粒度（4–16 小时／个）保留在仓库内部 WBS 文档；本表只到二级，避免数字噪声扰乱阅读。
 
 ### 3.3 关键路径
 
@@ -181,9 +152,9 @@ TingChengGIS项目 (1.0)
 | R-04 | 坐标系混淆（WGS-84 vs GCJ-02） | 低 | 高 | `CoordinateTransform` 单元测试 + 前端 `needGcj()` 判断 |
 | R-05 | 千亭 TSP 大规模性能不足 | 中 | 中 | `improveCyclic` 已含 100 轮上限；可预算控制 |
 | R-06 | 课程进度冲突 | 中 | 中 | 任务并行 + 关键路径预留缓冲 |
-| R-07 | 第三方 API 凭证泄露 | 低 | 高 | `application.yml` 不入库（建议）/ 配 `application-local.yml`；当前仓库存在已硬编码 key 的事实，需在 v1.x 中移除 |
+| R-07 | 第三方 API 凭证泄露 | 低 | 高 | API key 已通过 `${TINGCHENG_AI_*_API_KEY:}` 环境变量注入；JWT secret 仍带弱默认值，生产前必须设置 `TINGCHENG_JWT_SECRET` |
 
-> 当前仓库 `application.yml` 中确实硬编码了 DeepSeek 与 Zhipu 的 API key——这是 R-07 在生产前必须处理的问题。
+> 当前 `application.yml` 已采用 `${TINGCHENG_AI_DEEPSEEK_API_KEY:}` / `${TINGCHENG_AI_ZHIPU_API_KEY:}` / `${TINGCHENG_DB_PASSWORD:}` 注入；`TINGCHENG_JWT_SECRET` 设有开发默认值，生产部署需通过环境变量覆盖。
 
 ---
 
@@ -215,8 +186,8 @@ TingChengGIS项目 (1.0)
 
 | 项 | 优先级 | 备注 |
 |----|--------|------|
-| 引入 JaCoCo 覆盖率插件 | 高 | 当前无覆盖率底线 |
-| `application.yml` 中 API key 抽离到环境变量 | 高 | 安全合规 |
+| 给 JaCoCo 加 `check` goal | 高 | 已配置 0.8.12，但无最低覆盖率阈值 |
+| 强制生产环境设置 `TINGCHENG_JWT_SECRET` | 高 | 当前 dev 用弱默认值 |
 | WKT 文本 → PostGIS 几何列迁移工具 | 中 | 解锁 PostGIS 空间索引 |
 | OGC 代理增加超时与降级 | 中 | 当前依赖 30s 默认超时 |
 | OSRM 私有化部署 | 中 | 公共服务有限流风险 |
@@ -289,8 +260,8 @@ TingChengGIS项目 (1.0)
 #### 5.4.2 后续语义化版本规划
 
 ```
-v1.0.0  (current)  初始版本，核心功能 + 175→279 测试
-v1.1.x             安全清理（API key 抽离）+ JaCoCo + OSRM 缓存
+v1.0.0  (current)  初始版本，核心功能 + 175→279 测试，已含 JaCoCo + 环境变量注入
+v1.1.x             JaCoCo 阈值化 + JWT 强制环境变量 + OSRM 缓存
 v1.2.x             PostGIS 几何列迁移 + 空间索引
 v2.0.x             移动端 / 多语言 / 实时推送
 ```
@@ -365,13 +336,17 @@ CREATE TABLE pavilion_collectors (
 
 ## 八、与 deepseek 版本的主要修正
 
+实验五独有（项目管理/维护层面）：
+
 | 原报告 | 实际情况 |
 |--------|---------|
 | `v1.0.0/v1.1.0/v1.1.1` 多版本历史 | git 仅 2 次提交，仍在 v1.0.0 |
 | 已建立 develop / feature / hotfix / release 分支 | 当前只有 master |
-| 备份策略中 `application.yml` 直接入 Git 仓库 | 建议改为环境变量；当前仓库已硬编码 API key（属于债务） |
+| 备份策略中 `application.yml` 直接入 Git 仓库 | 当前仓库 API key/DB 密码已通过 `${TINGCHENG_*}` 环境变量注入；JWT secret 仍带弱默认值 |
 | TSP 50+ 点性能基准 | 仓库无该基准 |
 | 数据备份"已实施" | 仓库不含 backup 脚本；本节为"建议" |
+
+> 跨报告共识修正点（API 端点形态、`solveTwoOpt` 不存在、Lombok 未引入、JaCoCo 已配置等）汇总于实验六报告 §7.2。
 
 ---
 

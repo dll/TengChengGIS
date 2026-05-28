@@ -18,7 +18,7 @@
 
 ### 1.1 项目背景
 
-滁州市位于安徽省东部，拥有丰富的亭文化资源。其中以欧阳修《醉翁亭记》中描写的醉翁亭为代表，与陶然亭、爱晚亭、湖心亭并称中国四大名亭；丰乐亭、洗心亭、琅琊亭等历史名亭遍布滁州。这些建筑既是建筑艺术瑰宝，也是中华传统文化的重要载体。
+滁州市位于安徽省东部，拥有丰富的亭文化资源。其中以欧阳修《醉翁亭记》中描写的醉翁亭为代表，与陶然亭、爱晚亭、湖心亭并称中国四大名亭；丰乐亭、洗心亭、琅琊亭等历史名亭遍布滁州。
 
 当前痛点：
 
@@ -79,12 +79,12 @@ TingChengGIS 项目目标即为以上问题提供综合 WebGIS 解决方案。
 | 2D 地图 | Leaflet | 1.9.x（CDN） |
 | 3D 地球 | Cesium.js | 1.115（CDN） |
 | UI | Bootstrap | 5.3 |
-| AI provider（默认） | DeepSeek | `deepseek-v4-flash` |
+| AI provider（默认） | DeepSeek | `deepseek-chat` |
 | AI provider（备选） | Zhipu / OpenAI | `glm-4` / `gpt-3.5-turbo` |
 | 路网 | OSRM 公共服务 | `router.project-osrm.org` |
 | AI 辅助开发 | Claude Code / OpenCode CLI | – |
 
-> 项目**未引入** Lombok、JaCoCo；这两项是后续维护建议（详见实验五报告 opus47 版）。
+> 项目**未引入** Lombok（实体类 getter/setter 全部手写）。JaCoCo 0.8.12 已配置但未设阈值（详见实验五报告 opus47 版）。
 
 ---
 
@@ -94,159 +94,42 @@ TingChengGIS 项目目标即为以上问题提供综合 WebGIS 解决方案。
 
 ### 2.1 文件统计（实测）
 
-```
-TingChengGIS/
-├── src/main/java/                       (100 个 Java 源文件)
-│   ├── ai/                              ( 2)
-│   ├── config/                          ( 4)
-│   ├── controller/                      (18)
-│   ├── dto/                             ( 3)
-│   ├── entity/                          (11)
-│   ├── exception/                       ( 3)
-│   ├── repository/                      (11)
-│   ├── security/                        ( 3)
-│   ├── service/                         (15 接口 + 15 实现 + 数据类若干)
-│   ├── util/                            ( 4)
-│   └── PostgresTest.java                (顶级文件，PG 连接验证)
-├── src/test/java/                       (26 个测试类，279 个 @Test)
-├── src/main/resources/
-│   ├── application.yml
-│   └── static/
-│       ├── index.html                   (单文件 SPA)
-│       ├── share.html
-│       └── api-test.html
-├── data/
-│   ├── 千亭.xlsx                        (228 条原始亭子数据，Excel)
-│   └── gifs/                            (路线动画产物)
-├── docs/                                (实验报告)
-└── pom.xml
-```
-
-### 2.2 核心控制器与端点（节选，按实测）
-
-#### 亭子管理 `/pavilions`（PavilionController）
-
-| 方法 | 路径 | 用途 |
+| 路径 | 数量 | 说明 |
 |------|------|------|
-| POST | `/pavilions` | 创建（body 是 Pavilion） |
-| GET | `/pavilions/{id}` | 单查 |
-| GET | `/pavilions?page=&size=&sort=` | 分页 |
-| PUT | `/pavilions/{id}` | 更新 |
-| DELETE | `/pavilions/{id}` | 删除 |
-| GET | `/pavilions/type/{pavilionType}` | 类型查询 |
-| GET | `/pavilions/search?name=` | 名称模糊 |
-| GET | `/pavilions/by-year-range?startYear=&endYear=` | 年代区间 |
-| GET | `/pavilions/popular?minRating=` | 热门 |
-| **POST** | **`/pavilions/geographic-search`** | **body `{"wktText":"..."}`**（不是 4 个 Double） |
-| GET | `/pavilions/stats` | 统计 |
-| POST | `/pavilions/recommendations?userId=&preferences=` | AI 推荐 |
+| `src/main/java/` | 100 | Java 源文件（详见实验三报告 §2.3 包结构） |
+| `src/test/java/` | 26 类 / 279 `@Test` | 单元 + 集成测试 |
+| `src/main/resources/static/` | `index.html`、`share.html`、`api-test.html` | 单文件 SPA + 分享页 + API 测试页 |
+| `data/` | `千亭.xlsx`（228 条） + `gifs/`（路线动画） | 原始数据 + 产物 |
+| `docs/` | 实验报告（含 6 份 opus47 复核版） | 设计文档 |
+| `pom.xml` | 1 | Maven 构建（含 JaCoCo 0.8.12） |
 
-> 全部接口返回 `{success: bool, message?, data, count?}` 统一结构。
+### 2.2 核心控制器与端点（综合视图）
 
-#### 千亭遍历 `/thousand-pavilions`（ThousandPavilionsController）
+| 控制器 | 路由前缀 | 关键端点摘要 | 详细表 |
+|--------|---------|-------------|--------|
+| `PavilionController` | `/pavilions` | CRUD + `search` / `type/{...}` / `by-year-range` / `popular` / `stats` / `recommendations`；地理查询为 **`GET /geographic-search?wktText=`**（query 参数） | 实验三报告 §3.5 |
+| `ThousandPavilionsController` | `/thousand-pavilions` | `/locations`、`/route/{from}/{to}`、`/multimedia/{id}`、`/traverse-all`、`/optimal-route`、`/smart-tour`、`/tourism-services`、`/share-route`（POST）、`/weather`、`/nearby-facilities/{id}`、`/vr-experience/{id}`、`/import`（multipart） | 实验四报告 §4.1 |
+| `TransportRouteController` | `/transport-routes` | `/build-network`、`/build-multi-modal`（仅 ADMIN） | 实验五报告 §五 |
+| `AiController` / `PavilionAIController` | `/ai` | `GET /culture-intro?pavilionName=&location=`、`GET /historical-story?pavilionName=&constructionYear=`、`POST /ask`、`POST /tourism-advice`、`GET /culture-overview` | 实验三报告 §3.8 |
+| `AuthController` | `/auth` | `POST /login`、`POST /register`、`GET /me`（需 Bearer token） | 实验一报告 §4.2 |
+| `OgcProxyController` | `/ogc` | `POST /wms/capabilities`、`POST /wfs/capabilities`（body `{url}`） | 实验二报告 §3.4 |
 
-`/locations`、`/route/{from}/{to}`、`/multimedia/{id}`、`/traverse-all`、`/optimal-route`、`/smart-tour`、`/tourism-services`、`/share-route`（POST）、`/weather`、`/nearby-facilities/{id}`、`/vr-experience/{id}`、`/import`（multipart 导入）等。
+> 全部接口返回 `{success, message?, data, count?}` 统一结构。要点修正：`AiController.culture-intro` 接受 `pavilionName + location`（**不是** `pavilionId`）；`PavilionController.geographic-search` 是 GET + query（**不是** POST + body）。
 
-#### 交通路线 `/transport-routes`（TransportRouteController）
+### 2.3 核心算法（详见单项实验报告）
 
-含 `/build-network` 与 `/build-multi-modal`（仅 ADMIN 可调用）。
+| 算法 | 文件 | 详解位置 |
+|------|------|---------|
+| Haversine 距离 | `util/GeoUtils.java` | 实验二报告 §3.3 |
+| TSP 2-opt 改进 | `util/TspSolver.java`（`improveCyclic` 闭环 / `improveOpen` 开放路径） | 实验三报告 §3.6 |
+| WGS-84 ↔ GCJ-02 转换 | `util/CoordinateTransform.java`（境外原值返回；逆向 5 轮迭代） | 实验二报告 §3.5 |
+| AI 多 provider 路由 + 模板降级 | `ai/AiService.java`（`@PostConstruct init()` 切换 + `aiAvailable` 占位符判断） | 实验三报告 §3.8 |
 
-#### AI 服务 `/ai`（AiController + PavilionAIController）
+> 关键事实复述：`TspSolver` **没有** `solveTwoOpt(matrix)` 方法；`CoordinateTransform.wgs84ToGcj02` 在中国境外**返回原值**，**不抛异常**——前一版 deepseek 报告在这两点上有误。
 
-- `GET /ai/culture-intro?pavilionName=&location=`
-- `GET /ai/historical-story?pavilionName=&constructionYear=`
-- `POST /ai/ask`
-- `POST /ai/tourism-advice`
-- `GET /ai/culture-overview`
+### 2.4 前端关键技术（详见实验三报告 §4.1）
 
-> 注：`AiController` 实测的 `culture-intro` 接受 `pavilionName` 与 `location` 两个 query 参数，前一版报告写成 `pavilionId` 是不准确的。
-
-#### 用户认证 `/auth`（AuthController）
-
-- `POST /auth/login` body `{username, password}` → `{success, token, username, displayName, role}`
-- `POST /auth/register` body `{username, password, displayName}`
-- `GET /auth/me`（需 Bearer token）
-
-#### OGC 代理 `/ogc`（OgcProxyController）
-
-- `POST /ogc/wms/capabilities` body `{url}` → 解析后的 JSON
-- `POST /ogc/wfs/capabilities`
-
-### 2.3 核心算法实现要点
-
-#### Haversine 距离（GeoUtils）
-
-```java
-double R = 6371000;
-double dLat = Math.toRadians(lat2 - lat1);
-double dLon = Math.toRadians(lon2 - lon1);
-double a = Math.sin(dLat/2)*Math.sin(dLat/2)
-         + Math.cos(Math.toRadians(lat1))*Math.cos(Math.toRadians(lat2))
-         * Math.sin(dLon/2)*Math.sin(dLon/2);
-double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-return R * c;   // 米
-```
-
-#### TSP 改进（TspSolver）
-
-```java
-public final class TspSolver {
-    public static int[] improveCyclic(int[] tour, double[][] dist) { ... }   // 闭环
-    public static int[] improveOpen  (int[] tour, double[][] dist) { ... }   // 开放路径
-}
-```
-
-> **没有** `solveTwoOpt(matrix)`。前一版报告的方法名错误。
-
-#### 坐标转换（CoordinateTransform）
-
-```java
-public static double[] wgs84ToGcj02(double lng, double lat) {
-    if (outOfChina(lng, lat)) return new double[]{lng, lat};   // 境外原值
-    // ... Krasovsky 椭球参数 + 火星算法
-}
-
-public static double[] gcj02ToWgs84(double lng, double lat) {
-    if (outOfChina(lng, lat)) return new double[]{lng, lat};
-    double[] wgs = {lng, lat};
-    for (int i = 0; i < 5; i++) {                 // 5 轮迭代逼近
-        double[] gcj = wgs84ToGcj02(wgs[0], wgs[1]);
-        wgs[0] += lng - gcj[0];
-        wgs[1] += lat - gcj[1];
-    }
-    return wgs;
-}
-```
-
-#### AI 多 provider 路由（AiService.init）
-
-```java
-switch (activeProvider) {
-    case "deepseek" -> { resolvedApiUrl = deepseekApiUrl; ... }
-    case "zhipu"    -> { resolvedApiUrl = zhipuApiUrl;    ... }
-    default          -> { resolvedApiUrl = openaiApiUrl;  ... }
-}
-aiAvailable = (resolvedApiKey 非空 且 不是占位符 "sk-your-key-here");
-// chat() 等方法在 aiAvailable=false 或调用异常时回退到中文模板
-```
-
-### 2.4 前端关键技术
-
-```javascript
-// 高德/腾讯/卫片底图启用 GCJ-02
-function needGcj() {
-  return ['gaode','tencent','weipian'].includes(currentMapProvider);
-}
-
-// 把 (lng,lat,WGS-84) → Leaflet 显示坐标 [lat,lng]，根据当前底图按需偏移
-function leafCoord(lng, lat) {
-  if (needGcj()) {
-    const g = wgs84ToGcj02(lng, lat);    // 与后端 CoordinateTransform 同算法
-    return [g.lat, g.lng];
-  }
-  return [lat, lng];
-}
-```
+前端 `index.html` 中 `needGcj()` / `leafCoord(lng, lat)` 实现底图自动选用 GCJ-02 偏移；`wgs84ToGcj02()` 与后端 `CoordinateTransform` 算法一致。完整代码与逻辑详见实验三报告。
 
 ---
 
@@ -323,7 +206,7 @@ java -jar target/tingchenggis-1.0.0.jar
 > 当前无亭子数据，请通过 POST /thousand-pavilions/import 导入 228 条数据
 > 文件: data/千亭.xlsx
 
-实际仓库 `data/` 目录下文件名为 `千亭.xlsx`（与日志提示文件名略有差异，需要根据实际文件名调整）。
+实际仓库 `data/` 目录下文件名为 `千亭.xlsx`，与 `DataInitializer` 日志提示一致。
 
 ---
 
@@ -369,8 +252,8 @@ java -jar target/tingchenggis-1.0.0.jar
 - **Q：为什么要存 GCJ-02 双列而不是前端实时算？**
   A：避免每次查询都做坐标转换的 CPU 开销；同时降低前端误用风险（一旦弄错底图，错误是用户可见的）。代价是写入路径必须保证两列同步——已通过 `CoordinateTransform.wgs84ToGcj02` 集中处理。
 
-- **Q：AI key 写死在 `application.yml` 安全吗？**
-  A：当前是教学项目权宜之计；v1.1 已规划抽离到环境变量。
+- **Q：AI key 是怎么管理的？**
+  A：`application.yml` 用 `${TINGCHENG_AI_DEEPSEEK_API_KEY:}` 等环境变量注入；密钥不入库。JWT secret 当前带弱默认值（仅 dev），生产前必须通过 `TINGCHENG_JWT_SECRET` 覆盖。
 
 ### 6.2 设计问题
 
@@ -403,12 +286,12 @@ java -jar target/tingchenggis-1.0.0.jar
 |--------|------|
 | 默认账号 admin/admin | 实际为 `419116/419116`、`206004/206004` |
 | `/api/...` 前缀 | 实际无 `/api` 前缀，直接 `/pavilions` 等 |
-| `geographic-search` 接受 `{minLng, maxLng, minLat, maxLat}` | 接受 `{"wktText":"..."}` |
+| `geographic-search` 接受 `{minLng, maxLng, minLat, maxLat}` | 实际为 `GET ?wktText=`（query 参数） |
 | `TspSolver.solveTwoOpt(matrix)` | 实际是 `improveCyclic` / `improveOpen` |
 | AI `culture-intro?pavilionId=` | 实际 `?pavilionName=&location=` |
 | Pavilion 实体含 `getFullAddress()` | 不存在；`Pavilion` 仅 getter/setter |
 | 项目使用 Lombok `@Data` | 仓库未引入 Lombok |
-| JaCoCo 88% 指令覆盖率 | 仓库未引入 JaCoCo，无覆盖率数据 |
+| JaCoCo 88% 指令覆盖率 | JaCoCo 0.8.12 已配置但无阈值，88% 是虚构数字（实际数据需 `mvn test` 后看 `target/site/jacoco/index.html`） |
 | git 历史含 v1.0/v1.1 多版本 | 仅 2 次 commit，仍为 v1.0.0 |
 | 已有 develop / feature / hotfix 分支 | 当前只有 master |
 | 提交信息中"279 个测试" | 提交信息是 "175 unit/integration tests"，279 是当前实测 |
@@ -430,8 +313,7 @@ java -jar target/tingchenggis-1.0.0.jar
 4. **AI 辅助开发的实际收益**：Claude Code 显著提升了"对照源码做需求/设计/测试一致性审查"的效率——这次报告复核就识别了 deepseek 版本中十余处与代码不符之处。
 
 5. **未来方向**：
-   - 安全清理（API key 剥离）
-   - 引入 JaCoCo 给覆盖率画底线
+   - JWT secret 强制环境变量化 + JaCoCo 设阈值
    - PostGIS 几何列迁移工具
    - OSRM 私有化 + 缓存
    - 移动端 PWA 适配

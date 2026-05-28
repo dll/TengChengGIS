@@ -30,9 +30,9 @@
 | Spring Boot Test | 3.2.0 | `pom.xml` `spring-boot-starter-test` |
 | Spring Security Test | 3.2.0 | `pom.xml` |
 | H2 内存数据库 | 2.x | `pom.xml`（runtime） |
-| **JaCoCo** | **未引入** | `pom.xml` 中无 `jacoco-maven-plugin` |
+| JaCoCo | 0.8.12 | `pom.xml` 已配置 `prepare-agent` + `report`（test 阶段触发） |
 
-> 关键事实：项目 `pom.xml` 没有引入 JaCoCo 插件，因此**没有覆盖率报告产物**。前一版报告中"JaCoCo 88% 覆盖率"是虚构数字。本报告使用"测试方法计数 + 关键路径覆盖矩阵"代替。
+> 关键事实：项目 `pom.xml` 已配置 JaCoCo 0.8.12，但**未设置覆盖率阈值**（无 `check` goal）。前一版报告中"JaCoCo 88% 覆盖率"那个数字仍属虚构——执行 `mvn test` 后 `target/site/jacoco/index.html` 才是权威结果。本报告同时给出"测试方法计数 + 关键路径覆盖矩阵"作为补充。
 
 ---
 
@@ -159,7 +159,7 @@ class CoordinateTransformTest {
 | F-008 | 年份范围 | `?startYear=1000&endYear=2000` | 200 | `findByBuiltYearBetween` |
 | F-009 | 评分热门 | `?minRating=4.5` | 200 | `findByVisitorRatingGreaterThanEqual` |
 | F-010 | 分页 | `?page=0&size=10` | `totalElements/totalPages/currentPage/size` 字段齐全 | `getAllPavilions` |
-| F-011 | WKT 范围查询 | POST body `{"wktText": "POLYGON((...))"}` | 200 | `findByGeographicRange` |
+| F-011 | WKT 范围查询 | GET `?wktText=POLYGON((...))` | 200 | `findByGeographicRange` |
 | F-012 | 统计 | `/stats` | 返回 `PavilionStats` | `getPavilionStats` |
 | F-013 | 推荐 | `?userId=&preferences=` | 200 + 列表 | `recommendPavilions` |
 
@@ -254,7 +254,7 @@ $ mvn -q test
 |---------|---------|---------|
 | 亭子 CRUD | Controller + Service + Repository | `PavilionControllerTest`、`PavilionServiceImplTest`、`PavilionRepositoryTest` |
 | 名称/类型/年份/评分查询 | Controller + Service | 同上 |
-| WKT 范围查询 | Controller + Service + Repository | 含 wktText 解析 |
+| WKT 范围查询（GET ?wktText=） | Controller + Service + Repository | 含 wktText 解析 |
 | 千亭遍历 + TSP | Service + 工具 | `ThousandPavilionsServiceImplTest`、`TspSolverTest` |
 | 路径规划存储 | Controller | `RoutePlanControllerTest` |
 | AI 文化解说 + 降级 | Service | `AiServiceTest`（17 用例覆盖三家 provider 与降级） |
@@ -281,27 +281,30 @@ $ mvn -q test
 | 测试方法总数 | 279 |
 | 失败/错误 | 0 |
 | 通过率 | 100% |
-| 覆盖率工具 | 项目未引入；建议后续增加 JaCoCo |
+| 覆盖率工具 | JaCoCo 0.8.12 已配置（无阈值），运行 `mvn test` 后看 `target/site/jacoco/` |
 | 关键空间路径 | 已覆盖（坐标转换、Haversine、WKT 范围、TSP 改进） |
 
 ### 7.2 待补强
 
-1. 引入 JaCoCo 插件，给覆盖率画底线（建议指令覆盖率 ≥ 70%）
+1. 给 JaCoCo 加 `check` goal 设置最低覆盖率阈值（建议指令覆盖率 ≥ 70%）
 2. 为 `OgcProxyController` 和 `RoutingClient` 添加 WireMock 集成测试，避免对外部服务的隐式依赖
 3. 为 `PavilionServiceImpl.createPavilion` 缺坐标时回退 `(0,0)` 的容错路径增加专门用例
 4. AI 服务降级路径需要"key 故意失效"的契约测试
 
 ### 7.3 与 deepseek 版本的主要修正
 
+实验四独有（测试层面）：
+
 | 原报告 | 实际情况 |
 |--------|---------|
-| JaCoCo 88% 覆盖率 | 项目未引入 JaCoCo，无覆盖率数字 |
+| JaCoCo 88% 覆盖率 | JaCoCo 0.8.12 已配置但无阈值；88% 是模板数字，实际数值需 `mvn test` 后看 `target/site/jacoco/index.html` |
 | `CoordinateTransform.wgs84ToGcj02(null, ...)` 抛 `IllegalArgumentException` | 方法签名是 `double` 原始类型，无法传 null；超范围输入直接返回原值 |
 | `@ParameterizedTest @CsvSource({-181, 0; 181, 0; ...})` 验证非法坐标抛异常 | 仓库无此用例 |
-| `Tests run: 279`（这一总数属实） | 与实测一致 |
 | 单元/集成/精度/性能用例数细分（25/15/10/5） | 仓库无此细分；实际按层级分布 |
 | BUG-001/002/003 的修复 | 仓库历史无此 BUG ID；前一版是模板编造 |
 | 50 个点 TSP 1800ms | 仓库未做该基准测试 |
+
+> 跨报告共识修正点（API 端点形态、`solveTwoOpt` 不存在、默认账号等）汇总于实验六报告 §7.2。
 
 ---
 
@@ -311,4 +314,4 @@ $ mvn -q test
 
 2. **AI 辅助测试的局限**：AI 生成的边界用例，要先确认被测方法的真实行为（抛异常 vs 回退）才能写出正确断言。前一版 deepseek 报告就是因为没读源代码，照模板写出"应抛 IllegalArgumentException"的错误断言。
 
-3. **没有覆盖率工具时的替代策略**：用"功能 × 层级"矩阵手工核对每条关键路径是否被某个测试触达，是低成本的兜底方法。引入 JaCoCo 后可自动化。
+3. **覆盖率与关键路径矩阵的互补**：JaCoCo 给出量化指标（行/分支/方法覆盖率），关键路径矩阵给出语义级覆盖（"WKT 范围解析有没有被某个用例触达"）。两者各有盲区，建议并用。

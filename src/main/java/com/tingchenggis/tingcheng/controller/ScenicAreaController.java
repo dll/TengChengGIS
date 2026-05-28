@@ -195,10 +195,11 @@ public class ScenicAreaController {
         }
     }
 
-    @PostMapping("/geographic-search")
-    public ResponseEntity<Map<String, Object>> geographicSearch(@RequestBody Map<String, String> body) {
+    @GetMapping("/geographic-search")
+    public ResponseEntity<Map<String, Object>> geographicSearch(
+            @RequestParam(defaultValue = "") String wktText) {
         try {
-            List<ScenicArea> list = scenicAreaService.findByGeographicRange(body.get("wktText"));
+            List<ScenicArea> list = scenicAreaService.findByGeographicRange(wktText);
             Map<String, Object> resp = new HashMap<>();
             resp.put(SUCCESS, true);
             resp.put("data", list);

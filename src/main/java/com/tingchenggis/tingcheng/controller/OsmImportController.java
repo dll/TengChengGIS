@@ -4,6 +4,7 @@ import com.tingchenggis.tingcheng.service.impl.OsmDataImportService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -22,6 +23,7 @@ public class OsmImportController {
     }
 
     @PostMapping("/import/all")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> importAll() {
         try {
             Map<String, Object> result = osmImportService.importAll();
@@ -39,6 +41,7 @@ public class OsmImportController {
     }
 
     @PostMapping("/import/scenic")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> importScenic() {
         try {
             Map<String, Object> result = osmImportService.importScenicAreas();
@@ -56,6 +59,7 @@ public class OsmImportController {
     }
 
     @PostMapping("/import/admin")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> importAdmin() {
         try {
             Map<String, Object> result = osmImportService.importAdminDivisions();

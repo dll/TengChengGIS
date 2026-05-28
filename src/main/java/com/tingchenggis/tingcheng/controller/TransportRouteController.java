@@ -5,6 +5,7 @@ import com.tingchenggis.tingcheng.service.TransportRouteService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -360,6 +361,7 @@ public class TransportRouteController {
      * 多模式路网构建（每对亭子构建 driving/cycling/foot 多套路线）
      */
     @PostMapping("/build-multi-modal")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> buildMultiModal() {
         try {
             Map<String, Object> network = transportRouteService.buildMultiModalNetwork();
@@ -381,6 +383,7 @@ public class TransportRouteController {
      * 基于实际亭子数据，通过OSRM为所有亭子对之间创建道路连接
      */
     @PostMapping("/build-network")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> buildRoadNetwork() {
         try {
             logger.info("构建多级道路网络");
