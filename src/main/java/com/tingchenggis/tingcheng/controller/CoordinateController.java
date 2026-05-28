@@ -6,6 +6,7 @@ import com.tingchenggis.tingcheng.util.CoordinateTransform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,6 +32,7 @@ public class CoordinateController {
     }
 
     @PostMapping("/correct-pavilions")
+    @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public ResponseEntity<Map<String, Object>> correctPavilions(
             @RequestParam(defaultValue = "false") boolean force) {

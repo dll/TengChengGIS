@@ -316,7 +316,7 @@ public class PavilionServiceImpl implements PavilionService {
 | GET | `/pavilions/search?name=` | query | `{success, data, count}` |
 | GET | `/pavilions/by-year-range?startYear=&endYear=` | query | `{success, data, count}` |
 | GET | `/pavilions/popular?minRating=` | query | `{success, data, count}` |
-| **POST** | **`/pavilions/geographic-search`** | **`{"wktText": "..."}` body** | `{success, data, count}` |
+| **GET** | **`/pavilions/geographic-search?wktText=`** | **query 参数** | `{success, data, count}` |
 | GET | `/pavilions/stats` | – | `{success, data}` |
 | POST | `/pavilions/recommendations?userId=&preferences=` | query | `{success, data, count}` |
 
@@ -496,15 +496,16 @@ mvn spring-boot:run
 
 ### 7.2 与 deepseek 版本的主要修正
 
+实验三独有（编码实现层面）：
+
 | 原报告 | 实际情况 |
 |--------|---------|
 | `PavilionService.create()` 自动计算 GCJ-02 | `createPavilion()` 不计算；GCJ-02 在导入路径和坐标校正接口中显式生成 |
-| `TspSolver.solveTwoOpt(double[][])` | 不存在；实际方法为 `improveCyclic` / `improveOpen` |
-| `findByGeographicRange` 在 Controller 中接受 4 个 Double | Controller 接受 `{"wktText": "..."}`；4 Double 是 Repository 层 |
-| 项目使用 Lombok `@Data` | `pom.xml` 未引入 Lombok |
 | TSP `bruteForceSolve` / `twoOptSolve` 私有方法 | 仓库中无这些方法名 |
 | Controller 直接 `ResponseEntity.ok(entity)` | 实际全部包成 `{success, data, ...}` 统一响应 |
 | TransportRouteController 提供 `/tsp-plan` 端点 | 仓库中只有 `/transport-routes`、`/build-network`、`/build-multi-modal` 等；TSP 在 `ThousandPavilionsService` |
+
+> 跨报告共识修正点（API 端点形态、`solveTwoOpt` 不存在、Lombok 未引入、JaCoCo 已配置等）汇总于实验六报告 §7.2。
 
 ### 7.3 课后思考
 

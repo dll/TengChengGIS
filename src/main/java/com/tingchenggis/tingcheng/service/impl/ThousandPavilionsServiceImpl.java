@@ -55,19 +55,13 @@ public class ThousandPavilionsServiceImpl implements ThousandPavilionsService {
 
     @Override
     public double calculateDistance(Long pavilionId1, Long pavilionId2) {
-        Pavilion pavilion1 = pavilionRepository.findById(pavilionId1).orElse(null);
-        Pavilion pavilion2 = pavilionRepository.findById(pavilionId2).orElse(null);
-
-        if (pavilion1 == null || pavilion2 == null ||
-            pavilion1.getLatitude() == null || pavilion1.getLongitude() == null ||
-            pavilion2.getLatitude() == null || pavilion2.getLongitude() == null) {
-            return 0.0;
-        }
-
-        return GeoUtils.haversineKm(
-            pavilion1.getLongitude(), pavilion1.getLatitude(),
-            pavilion2.getLongitude(), pavilion2.getLatitude()
-        );
+        List<Pavilion> pavilions = pavilionRepository.findAllById(List.of(pavilionId1, pavilionId2));
+        if (pavilions.size() < 2) return 0.0;
+        Pavilion p1 = pavilions.get(0).getId().equals(pavilionId1) ? pavilions.get(0) : pavilions.get(1);
+        Pavilion p2 = pavilions.get(0).getId().equals(pavilionId2) ? pavilions.get(0) : pavilions.get(1);
+        if (p1.getLatitude() == null || p1.getLongitude() == null ||
+            p2.getLatitude() == null || p2.getLongitude() == null) return 0.0;
+        return GeoUtils.haversineKm(p1.getLongitude(), p1.getLatitude(), p2.getLongitude(), p2.getLatitude());
     }
 
     @Override

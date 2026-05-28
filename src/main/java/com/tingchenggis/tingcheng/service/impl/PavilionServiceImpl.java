@@ -187,33 +187,26 @@ public class PavilionServiceImpl implements PavilionService {
     @Override
     public PavilionStats getStats() {
         logger.debug("Calculating pavilion statistics");
-
+        List<Pavilion> all = pavilionRepository.findAll();
         PavilionStats stats = new PavilionStats();
-        stats.setTotalPavilions((long) pavilionRepository.findAll().size());
-        stats.setHistoricalPavilions((long) pavilionRepository.findByPavilionType("HISTORICAL").size());
-        stats.setModernPavilions((long) pavilionRepository.findByPavilionType("MODERN").size());
-        stats.setCulturalPavilions((long) pavilionRepository.findByPavilionType("CULTURAL").size());
-
-        List<Pavilion> allPavilions = pavilionRepository.findAll();
-        if (!allPavilions.isEmpty()) {
-            double sumRatings = allPavilions.stream()
-                    .mapToDouble(p -> p.getVisitorRating() != null ? p.getVisitorRating() : 0.0)
-                    .sum();
-            stats.setAverageRating(sumRatings / allPavilions.size());
-        } else {
-            stats.setAverageRating(0.0);
+        stats.setTotalPavilions((long) all.size());
+        long hist = 0, mod = 0, cult = 0;
+        double sumRatings = 0;
+        Pavilion top = null;
+        double topRating = -1;
+        for (Pavilion p : all) {
+            if ("HISTORICAL".equals(p.getPavilionType())) hist++;
+            else if ("MODERN".equals(p.getPavilionType())) mod++;
+            else if ("CULTURAL".equals(p.getPavilionType())) cult++;
+            double r = p.getVisitorRating() != null ? p.getVisitorRating() : 0.0;
+            sumRatings += r;
+            if (r > topRating) { topRating = r; top = p; }
         }
-
-        Pavilion mostPopular = allPavilions.stream()
-                .max((p1, p2) -> {
-                    Double rating1 = p1.getVisitorRating() != null ? p1.getVisitorRating() : 0.0;
-                    Double rating2 = p2.getVisitorRating() != null ? p2.getVisitorRating() : 0.0;
-                    return rating1.compareTo(rating2);
-                })
-                .orElse(null);
-
-        stats.setMostPopularPavilion(mostPopular != null ? mostPopular.getName() : "N/A");
-
+        stats.setHistoricalPavilions(hist);
+        stats.setModernPavilions(mod);
+        stats.setCulturalPavilions(cult);
+        stats.setAverageRating(all.isEmpty() ? 0.0 : sumRatings / all.size());
+        stats.setMostPopularPavilion(top != null ? top.getName() : "N/A");
         return stats;
     }
 

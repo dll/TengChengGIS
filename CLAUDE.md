@@ -49,4 +49,4 @@ Standard Spring layered architecture under `com.tingchenggis.tingcheng`:
 ## External services
 
 - OSRM public server: `https://router.project-osrm.org` — required for routing endpoints.
-- AI providers (one of): DeepSeek / Zhipu / OpenAI. Configured under `tingcheng.ai.*` in `application.yml`. The repo currently has live keys committed in `application.yml` — flag this if rotating or refactoring AI config.
+- AI providers (one of): DeepSeek / Zhipu / OpenAI. Configured under `tingcheng.ai.*` in `application.yml`; keys are injected via `${TINGCHENG_AI_DEEPSEEK_API_KEY:}` / `${TINGCHENG_AI_ZHIPU_API_KEY:}` env vars (no live keys in repo). JWT secret has a weak dev default — production must set `TINGCHENG_JWT_SECRET`.
