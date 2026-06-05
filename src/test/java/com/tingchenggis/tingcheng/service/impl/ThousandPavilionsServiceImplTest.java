@@ -55,8 +55,7 @@ class ThousandPavilionsServiceImplTest {
 
     @Test
     void calculateDistance() {
-        when(pavilionRepository.findById(1L)).thenReturn(Optional.of(p1));
-        when(pavilionRepository.findById(2L)).thenReturn(Optional.of(p2));
+        when(pavilionRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(p1, p2));
 
         double d = service.calculateDistance(1L, 2L);
 
@@ -67,8 +66,7 @@ class ThousandPavilionsServiceImplTest {
     void calculateDistance_missingCoords() {
         Pavilion noCoord = new Pavilion();
         noCoord.setId(99L);
-        when(pavilionRepository.findById(1L)).thenReturn(Optional.of(p1));
-        when(pavilionRepository.findById(99L)).thenReturn(Optional.of(noCoord));
+        when(pavilionRepository.findAllById(List.of(1L, 99L))).thenReturn(List.of(p1, noCoord));
 
         assertEquals(0.0, service.calculateDistance(1L, 99L));
     }
@@ -142,8 +140,7 @@ class ThousandPavilionsServiceImplTest {
 
     @Test
     void estimateTravelTime() {
-        when(pavilionRepository.findById(1L)).thenReturn(Optional.of(p1));
-        when(pavilionRepository.findById(2L)).thenReturn(Optional.of(p2));
+        when(pavilionRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(p1, p2));
 
         double time = service.estimateTravelTime(1L, 2L);
 

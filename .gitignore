@@ -38,3 +38,10 @@ key.txt
 TingChengGIS/WeChatGIS/
 
 node_modules/
+
+# Deploy runtime data (H2 database, import xlsx, exported gifs)
+deploy/data/*.mv.db
+deploy/data/*.trace.db
+deploy/data/*.xlsx
+deploy/data/gifs/*.gif
+deploy/logs/

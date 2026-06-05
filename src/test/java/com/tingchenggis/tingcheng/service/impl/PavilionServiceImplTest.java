@@ -198,9 +198,6 @@ class PavilionServiceImplTest {
         p2.setVisitorRating(3.5);
 
         when(pavilionRepository.findAll()).thenReturn(List.of(p1, p2));
-        when(pavilionRepository.findByPavilionType("HISTORICAL")).thenReturn(List.of(p1));
-        when(pavilionRepository.findByPavilionType("MODERN")).thenReturn(List.of(p2));
-        when(pavilionRepository.findByPavilionType("CULTURAL")).thenReturn(List.of());
 
         PavilionStats stats = service.getStats();
 
