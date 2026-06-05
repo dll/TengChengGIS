@@ -28,20 +28,69 @@ echo.
 
 :check_java
 if exist "%APP_DIR%jre\bin\java.exe" (
-    echo [OK] Using embedded JRE
+    echo [OK] Using embedded JRE (Temurin 21)
     set "JAVA=%APP_DIR%jre\bin\java.exe"
-) else (
-    where java >nul 2>&1
-    if errorlevel 1 (
-        echo [ERROR] Java 21 not found!
-        echo.
-        echo Download JRE 21 from https://adoptium.net/temurin/releases/?version=21
-        echo Extract to %APP_DIR%jre folder, or install system Java 21
-        pause
-        exit /b 1
-    )
-    set "JAVA=java"
+    echo [OK] Java ready
+    echo.
+    goto :check_jar
 )
+
+echo [INFO] Embedded JRE not found, checking system Java...
+where java >nul 2>&1
+if errorlevel 1 goto :no_java_found
+
+set "JAVA=java"
+powershell -NoProfile -Command "try { $v = (java -version 2>&1).ToString(); if ($v -match 'version \"(\d+)') { $major = [int]$Matches[1]; if ($major -ge 17) { exit 0 } else { Write-Host ('[WARN] Java version ' + $major + ' found, need 17+'); exit 1 } } else { exit 1 } } catch { exit 1 }"
+if not errorlevel 1 (
+    echo [OK] System Java 17+ found
+    echo [OK] Java ready
+    echo.
+    goto :check_jar
+)
+
+:no_java_found
+echo.
+echo ================================================================
+echo   Java 17+ is required but not available.
+echo ================================================================
+echo.
+where java >nul 2>&1
+if not errorlevel 1 (
+    echo   Current Java:
+    java -version 2>&1
+)
+echo.
+echo   Solution 1: Auto-download JRE 21 (recommended, ~55MB)
+echo     Press Y to download and install JRE 21 automatically
+echo.
+echo   Solution 2: Download pre-built package from GitHub Releases
+echo     https://github.com/dll/TengChengGIS/releases/latest
+echo.
+echo   Solution 3: Manual download
+echo     https://adoptium.net/temurin/releases/?version=21
+echo     Extract to: %APP_DIR%jre
+echo.
+choice /c YN /n /m "Download JRE 21 automatically? (Y/N): "
+if errorlevel 2 (
+    echo.
+    echo   Exiting. Please download JRE manually.
+    pause
+    exit /b 1
+)
+
+REM Auto-download JRE 21 from Adoptium API
+echo Downloading JRE 21 (Temurin for Windows x64)...
+echo This may take a few minutes depending on your internet speed.
+powershell -NoProfile -Command "$ProgressPreference='SilentlyContinue'; $url='https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jre/hotspot/normal/eclipse'; $zip='%TEMP%\jre21.zip'; Write-Host '  Downloading...'; Invoke-WebRequest -Uri $url -OutFile $zip; Write-Host '  Extracting...'; $extract='%TEMP%\jre21-extract'; if (Test-Path $extract) { Remove-Item -Recurse -Force $extract }; Expand-Archive -Path $zip -DestinationPath $extract; $jre=Get-ChildItem $extract -Recurse -Directory | Where-Object { Test-Path ('{0}\bin\java.exe' -f $_.FullName) } | Select-Object -First 1; if (-not $jre) { $jre=Get-ChildItem $extract | Select-Object -First 1 }; $target='%APP_DIR%jre'; if (Test-Path $target) { Remove-Item -Recurse -Force $target }; Move-Item $jre.FullName $target; Remove-Item $zip -Force; Remove-Item -Recurse -Force $extract; if (Test-Path ('{0}\bin\java.exe' -f $target)) { Write-Host '  Done!'; exit 0 } else { exit 1 }"
+if errorlevel 1 (
+    echo [ERROR] Failed to download JRE 21.
+    echo.
+    echo Manual download: https://adoptium.net/temurin/releases/?version=21
+    pause
+    exit /b 1
+)
+echo [OK] JRE 21 downloaded and installed!
+set "JAVA=%APP_DIR%jre\bin\java.exe"
 echo [OK] Java ready
 echo.
 
