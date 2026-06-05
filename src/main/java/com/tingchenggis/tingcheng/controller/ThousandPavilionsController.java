@@ -13,6 +13,7 @@ import com.tingchenggis.tingcheng.service.PavilionService;
 import com.tingchenggis.tingcheng.service.ThousandPavilionsService;
 import com.tingchenggis.tingcheng.util.GeoUtils;
 import com.tingchenggis.tingcheng.util.PavilionTypeUtils;
+import org.springframework.core.io.ClassPathResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -264,11 +265,14 @@ public class ThousandPavilionsController {
         multimediaInfo.put("rating", pavilion.getVisitorRating());
 
         String slug = pavilion.getId() != null ? "pavilion-" + pavilion.getId() : "default";
-        List<String> images = Arrays.asList(
-            IMAGES_PATH + slug + "-1.svg",
-            IMAGES_PATH + slug + "-2.svg",
-            IMAGES_PATH + "pavilion-default.svg"
-        );
+        List<String> images = new ArrayList<>();
+        for (String suffix : Arrays.asList("-1.svg", "-2.svg")) {
+            String path = IMAGES_PATH + slug + suffix;
+            if (new ClassPathResource("static" + path).exists()) {
+                images.add(path);
+            }
+        }
+        images.add(IMAGES_PATH + "pavilion-default.svg");
         multimediaInfo.put("imageGallery", images);
         multimediaInfo.put("audioGuide", "/audio/guides/" + pavilion.getId() + ".txt");
         multimediaInfo.put("videoTour", null);

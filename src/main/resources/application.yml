@@ -2,10 +2,19 @@ server:
   port: 8092
   servlet:
     context-path:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
 
 spring:
   application:
     name: tingchenggis
+  http:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
 
   # 使用H2开发数据库
   profiles:
@@ -72,6 +81,9 @@ spring:
       max-request-size: 100MB
 
 logging:
+  charset:
+    console: UTF-8
+    file: UTF-8
   level:
     root: INFO
     com.tingchenggis: INFO

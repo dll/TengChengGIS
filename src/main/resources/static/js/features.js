@@ -160,7 +160,7 @@ async function traverseAll() {
     if (!confirm('遍历全部 ' + TCG.pavs.length + ' 个亭子使用TSP求解+OSRM真实路网。这可能耗时数十秒。是否继续?')) return;
     var ids = TCG.pavs.map(function(p){return p.id});
     await runTspPlanning(ids, 'WALKING', 'distance');
-    if (tspPlanData) startTspPlay();
+    if (TCG.tspPlanData) startTspPlay();
 }
 
 async function tourismSvc() {
@@ -272,10 +272,11 @@ function dlTemplate(fmt) {
 }
 
 var tspAnimMarker = null, tspAnimPath = null, tspAnimTimer = null;
-var tspSnapLayers = [], tspPlanData = null, tspProgress = 0, tspPaused = true;
-var tspSpeed = 1, tspAnimMs = 0, tspAnimStart = 0, tspProgressStart = 0;
+var tspSnapLayers = [], tspUiEls = null;
+TCG.tspPlanData = null; TCG.tspProgress = 0; TCG.tspPaused = true;
+TCG.tspSpeed = 1; var tspAnimMs = 0; TCG.tspAnimStart = 0; TCG.tspProgressStart = 0;
 var tspSetupModal = null, plansModal = null;
-var tspLastIdx = 0, tspUiEls = null;
+TCG.tspLastIdx = 0;
 var TSP_MODE_COLORS = {BUS:'#3498db', TAXI:'#f39c12', E_BIKE:'#2ecc71', BICYCLE:'#e67e22', WALKING:'#e74c3c'};
 var TSP_SNAP_THRESHOLD_M = 5;
 var TSP_ANIM_MS_PER_KM = 1500, TSP_ANIM_MS_MIN = 8000, TSP_ANIM_MS_MAX = 90000;
@@ -317,7 +318,7 @@ async function runTspPlanning(ids, mode, objective) {
 }
 
 function setupTspAnimation(data) {
-    tspPlanData = data;
+    TCG.tspPlanData = data;
     var c = TSP_MODE_COLORS[data.mode] || '#95a5a6';
 
     var allLeaf = data.allCoordinates.map(function(pt){return leafCoord(pt[0],pt[1]);});
@@ -346,7 +347,7 @@ function setupTspAnimation(data) {
     data._flat = flat;
     tspAnimMs = Math.max(TSP_ANIM_MS_MIN, Math.min(data.totalDistance * TSP_ANIM_MS_PER_KM, TSP_ANIM_MS_MAX));
 
-    tspProgress = 0; tspPaused = true; tspLastIdx = 0;
+    TCG.tspProgress = 0; TCG.tspPaused = true; TCG.tspLastIdx = 0;
     tspUiEls = {
         fill: document.getElementById('tspcFill'),
         pct: document.getElementById('tspcPct'),
@@ -370,70 +371,70 @@ function addSnapLine(pavLng, pavLat, snap, label) {
 }
 
 function startTspPlay() {
-    if (!tspPlanData) return;
-    tspPaused = false;
-    tspAnimStart = Date.now();
-    tspProgressStart = tspProgress;
+    if (!TCG.tspPlanData) return;
+    TCG.tspPaused = false;
+    TCG.tspAnimStart = Date.now();
+    TCG.tspProgressStart = TCG.tspProgress;
     tspUiEls.play.textContent = '⏸ 暂停';
     tspStep();
 }
 
 function pauseTspPlay() {
-    tspPaused = true;
+    TCG.tspPaused = true;
     if (tspUiEls) tspUiEls.play.textContent = '▶ 播放';
     if (tspAnimTimer) { clearTimeout(tspAnimTimer); tspAnimTimer = null; }
 }
 
 function tspStep() {
-    if (!tspPlanData || tspPaused) return;
-    var elapsed = (Date.now() - tspAnimStart) * tspSpeed;
-    tspProgress = Math.min(tspProgressStart + elapsed/tspAnimMs, 1.0);
-    var c = TSP_MODE_COLORS[tspPlanData.mode] || '#95a5a6';
-    updateTspUi(tspProgress, c);
-    if (tspProgress < 1.0) {
+    if (!TCG.tspPlanData || TCG.tspPaused) return;
+    var elapsed = (Date.now() - TCG.tspAnimStart) * TCG.tspSpeed;
+    TCG.tspProgress = Math.min(TCG.tspProgressStart + elapsed/tspAnimMs, 1.0);
+    var c = TSP_MODE_COLORS[TCG.tspPlanData.mode] || '#95a5a6';
+    updateTspUi(TCG.tspProgress, c);
+    if (TCG.tspProgress < 1.0) {
         tspAnimTimer = setTimeout(tspStep, 50);
     } else {
-        tspPaused = true;
+        TCG.tspPaused = true;
         tspUiEls.play.textContent = '✓ 完成';
-        toast('TSP完成: '+tspPlanData.totalDistance.toFixed(1)+'km, '+
-            Math.round(tspPlanData.totalDuration/60)+'min, ¥'+
-            (tspPlanData.totalCost||0).toFixed(2), 'success');
+        toast('TSP完成: '+TCG.tspPlanData.totalDistance.toFixed(1)+'km, '+
+            Math.round(TCG.tspPlanData.totalDuration/60)+'min, ¥'+
+            (TCG.tspPlanData.totalCost||0).toFixed(2), 'success');
     }
 }
 
 function updateTspUi(prog, color) {
-    if (!tspPlanData) return;
-    var flat = tspPlanData._flat;
-    var tgt = prog * tspPlanData.totalDistance;
-    if (flat[tspLastIdx] && flat[tspLastIdx].cumDist > tgt) tspLastIdx = 0;
-    while (tspLastIdx < flat.length-1 && flat[tspLastIdx+1].cumDist < tgt) tspLastIdx++;
-    if (tspAnimMarker) tspAnimMarker.setLatLng(flat[tspLastIdx].leaf);
+    if (!TCG.tspPlanData) return;
+    var flat = TCG.tspPlanData._flat;
+    var tgt = prog * TCG.tspPlanData.totalDistance;
+    if (flat[TCG.tspLastIdx] && flat[TCG.tspLastIdx].cumDist > tgt) TCG.tspLastIdx = 0;
+    while (TCG.tspLastIdx < flat.length-1 && flat[TCG.tspLastIdx+1].cumDist < tgt) TCG.tspLastIdx++;
+    if (tspAnimMarker) tspAnimMarker.setLatLng(flat[TCG.tspLastIdx].leaf);
     tspUiEls.fill.style.width = (prog*100)+'%';
     tspUiEls.pct.textContent = Math.round(prog*100)+'%';
     tspUiEls.counter.textContent =
-        (prog*tspPlanData.totalDistance).toFixed(2) + ' / ' + tspPlanData.totalDistance.toFixed(2) + ' km';
-    var totalMin = Math.round(tspPlanData.totalDuration / 60);
+        (prog*TCG.tspPlanData.totalDistance).toFixed(2) + ' / ' + TCG.tspPlanData.totalDistance.toFixed(2) + ' km';
+    var totalMin = Math.round(TCG.tspPlanData.totalDuration / 60);
     tspUiEls.info.innerHTML =
-        '<b style="color:'+color+'">TSP['+tspPlanData.mode+'/'+tspPlanData.objective+']</b> '+
-        '路程<b>'+tspPlanData.totalDistance.toFixed(1)+'km</b> 时间<b>'+totalMin+'min</b>'+
-        (tspPlanData.totalCost ? ' 费用<b>¥'+tspPlanData.totalCost.toFixed(0)+'</b>' : '') +
-        ' (经过 '+(tspPlanData.visitOrderIds.length-1)+' 亭子)';
+        '<b style="color:'+color+'">TSP['+TCG.tspPlanData.mode+'/'+TCG.tspPlanData.objective+']</b> '+
+        '路程<b>'+TCG.tspPlanData.totalDistance.toFixed(1)+'km</b> 时间<b>'+totalMin+'min</b>'+
+        (TCG.tspPlanData.totalCost ? ' 费用<b>¥'+TCG.tspPlanData.totalCost.toFixed(0)+'</b>' : '') +
+        ' (经过 '+(TCG.tspPlanData.visitOrderIds.length-1)+' 亭子)';
 }
 
 function stopTspAnimation() {
-    tspPaused = true;
+    TCG.tspPaused = true;
     if (tspAnimTimer) { clearTimeout(tspAnimTimer); tspAnimTimer = null; }
     if (tspAnimMarker) { TCG.lmap.removeLayer(tspAnimMarker); tspAnimMarker = null; }
     if (tspAnimPath) { TCG.lmap.removeLayer(tspAnimPath); tspAnimPath = null; }
     tspSnapLayers.forEach(function(l){ if(TCG.lmap.hasLayer(l)) TCG.lmap.removeLayer(l); });
     tspSnapLayers = [];
     document.getElementById('tspCtrl').classList.remove('show');
-    tspPlanData = null; tspUiEls = null; tspLastIdx = 0;
+    TCG.tspPlanData = null; tspUiEls = null; TCG.tspLastIdx = 0;
 }
 
 async function exportTspGif() {
-    if (!tspPlanData) { toast('没有TSP方案可导出', 'warning'); return; }
-    var data = tspPlanData;
+    if (!TCG.tspPlanData) { toast('没有TSP方案可导出', 'warning'); return; }
+    var data = TCG.tspPlanData;
     var coords = data.allCoordinates;
     if (!coords || coords.length < 2) { toast('路径数据不足，无法导出', 'warning'); return; }
 
@@ -625,16 +626,22 @@ async function exportTspGif() {
             var url = URL.createObjectURL(blob);
             var a = document.createElement('a');
             a.href = url;
-            a.download = 'TSP动画-' + data.mode + '-' + data.objective + '.gif';
+            var ts = new Date();
+            var pad = function(n){return String(n).padStart(2,'0');};
+            var stamp = ts.getFullYear() + pad(ts.getMonth()+1) + pad(ts.getDate())
+                      + '-' + pad(ts.getHours()) + pad(ts.getMinutes()) + pad(ts.getSeconds());
+            var firstName = data.segments && data.segments.length > 0 ? data.segments[0].fromName : '';
+            a.download = 'TSP动画-' + data.mode + '-' + data.objective
+                       + (firstName ? '-' + firstName : '') + '-' + stamp + '.gif';
             a.click();
             URL.revokeObjectURL(url);
             toast('GIF已下载！文件保存在浏览器「下载」文件夹，大小 ' + (blob.size/1024).toFixed(1) + 'KB', 'success');
 
-            if (tspPlanData && tspPlanData._savedId) {
+            if (TCG.tspPlanData && TCG.tspPlanData._savedId) {
                 try {
                     var formData = new FormData();
-                    formData.append('file', blob, 'plan_' + tspPlanData._savedId + '.gif');
-                    await fetch('/route-plans/' + tspPlanData._savedId + '/gif', {
+                    formData.append('file', blob, 'plan_' + TCG.tspPlanData._savedId + '.gif');
+                    await fetch('/route-plans/' + TCG.tspPlanData._savedId + '/gif', {
                         method: 'POST', body: formData
                     });
                     toast('GIF已保存到方案中！可在「已存方案」中下载', 'success');
@@ -1219,6 +1226,12 @@ window.dlTemplate = dlTemplate;
 window.openTspSetup = openTspSetup;
 window.stopTspAnimation = stopTspAnimation;
 window.exportTspGif = exportTspGif;
+TCG.runTspPlanning = runTspPlanning;
+TCG.startTspPlay = startTspPlay;
+TCG.pauseTspPlay = pauseTspPlay;
+TCG.updateTspUi = updateTspUi;
+TCG.stopTspAnimation = stopTspAnimation;
+TCG.exportTspGif = exportTspGif;
 window.openSavedPlans = openSavedPlans;
 window.loadPlan = loadPlan;
 window.delPlan = delPlan;

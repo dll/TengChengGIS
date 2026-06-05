@@ -73,7 +73,7 @@ public class RoutePlanController {
         return ResponseEntity.ok(resp);
     }
 
-    private final Path gifDir = Paths.get("data", "gifs");
+    private final Path gifDir = Paths.get(System.getProperty("user.dir"), "data", "gifs");
 
     /** 上传 GIF 文件关联到指定方案 */
     @PostMapping("/{id}/gif")

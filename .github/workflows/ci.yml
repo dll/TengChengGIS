@@ -1,4 +1,12 @@
-name: CI
+# =============================================================================
+# TingChengGIS CI/CD Pipeline
+#
+# Triggers:
+#   push / PR → master, develop   — CI (test + docker)
+#   tag v*                        — CI + Release (GitHub Release + deploy ZIP)
+#   workflow_dispatch             — manual full pipeline
+# =============================================================================
+name: CI/CD
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -6,10 +14,20 @@ env:
 on:
   push:
     branches: [master, develop]
+    tags: ['v*']
   pull_request:
     branches: [master]
+  workflow_dispatch:
+    inputs:
+      run-deploy:
+        description: 'Run deployment step (requires DEPLOY_* secrets)'
+        type: boolean
+        default: false
 
 jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # 1. CI — Test & Package
+  # ──────────────────────────────────────────────────────────────────────────
   test:
     runs-on: ubuntu-latest
     steps:
@@ -44,7 +62,11 @@ jobs:
         with:
           name: tingchenggis-jar
           path: target/*.jar
+          retention-days: 7
 
+  # ──────────────────────────────────────────────────────────────────────────
+  # 2. Docker — Build image + healthcheck + E2E
+  # ──────────────────────────────────────────────────────────────────────────
   docker:
     needs: test
     runs-on: ubuntu-latest
@@ -68,7 +90,7 @@ jobs:
         run: |
           docker run --rm -d --name tc-test -p 8092:8092 tingchenggis:ci
           timeout 60 sh -c 'until curl -sf http://localhost:8092/actuator/health; do sleep 3; done'
-          echo " HEALTHY"
+          echo "✅ HEALTHY"
 
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
@@ -83,32 +105,166 @@ jobs:
           npx playwright test
 
       - name: Cleanup
+        if: always()
         run: docker stop tc-test || true
 
-  # ── 可选：部署到本地开发机（需配置 GitHub Secrets）──
-  # deploy:
-  #   needs: test
-  #   runs-on: ubuntu-latest
-  #   if: github.ref == 'refs/heads/master'
-  #   steps:
-  #     - uses: actions/download-artifact@v4
-  #       with:
-  #         name: tingchenggis-jar
-  #     - name: SCP to server
-  #       uses: appleboy/scp-action@v0.1.7
-  #       with:
-  #         host: ${{ secrets.DEPLOY_HOST }}
-  #         username: ${{ secrets.DEPLOY_USER }}
-  #         key: ${{ secrets.DEPLOY_SSH_KEY }}
-  #         source: "*.jar"
-  #         target: "/opt/tingchenggis/"
-  #         strip_components: 0
-  #     - name: Restart service
-  #       uses: appleboy/ssh-action@v1.0.3
-  #       with:
-  #         host: ${{ secrets.DEPLOY_HOST }}
-  #         username: ${{ secrets.DEPLOY_USER }}
-  #         key: ${{ secrets.DEPLOY_SSH_KEY }}
-  #         script: |
-  #           sudo systemctl restart tingchenggis
-  #           echo "Deployment complete"
+  # ──────────────────────────────────────────────────────────────────────────
+  # 3. Deploy Package — Assemble deploy/ + JAR into a release-ready ZIP
+  # ──────────────────────────────────────────────────────────────────────────
+  package-deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tingchenggis-jar
+          path: deploy/
+
+      - name: Rename JAR to canonical name
+        run: |
+          mv deploy/*.jar deploy/tingchenggis.jar
+          chmod +x deploy/*.bat
+          echo "${{ github.sha }}" > deploy/VERSION
+
+      - name: Package deploy ZIP
+        run: |
+          cd deploy
+          zip -9 -r ../tingchenggis-deploy.zip . \
+            -x ".gitkeep" -x "temp/*" -x "logs/*" -x "data/*.mv.db"
+          cd ..
+          sha256sum tingchenggis-deploy.zip > tingchenggis-deploy.zip.sha256
+
+      - name: Upload deploy package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tingchenggis-deploy
+          path: |
+            tingchenggis-deploy.zip
+            tingchenggis-deploy.zip.sha256
+          retention-days: 30
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 4. Release — Create GitHub Release (only on tag push v*)
+  # ──────────────────────────────────────────────────────────────────────────
+  release:
+    needs: [test, package-deploy]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download deploy package
+        uses: actions/download-artifact@v4
+        with:
+          name: tingchenggis-deploy
+          path: release-artifacts
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          {
+            echo "notes<<EOF"
+            echo "## TingChengGIS $TAG"
+            echo ""
+            echo "### 构建信息"
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- 构建日期: $(date -u '+%Y-%m-%d %H:%M UTC')"
+            echo ""
+            echo "### 下载"
+            echo "- \`tingchenggis-deploy.zip\` — 完整部署包（JAR + 启动脚本 + 配置）"
+            echo "- \`tingchenggis-deploy.zip.sha256\` — 校验文件"
+            echo ""
+            echo "### 部署方式"
+            echo "1. 下载 \`tingchenggis-deploy.zip\` 并解压到部署目录"
+            echo "2. 将 \`data/千亭.xlsx\` 放入与 JAR 同级的 \`data/\` 目录"
+            echo "3. 双击 \`Start-TingChengGIS.bat\` 启动"
+            echo "4. 浏览器访问 http://localhost:8092"
+            echo "EOF
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "TingChengGIS ${{ github.ref_name }}"
+          body: ${{ steps.notes.outputs.notes }}
+          files: |
+            release-artifacts/tingchenggis-deploy.zip
+            release-artifacts/tingchenggis-deploy.zip.sha256
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 5. Deploy to Remote Server (SSH)
+  #    Requires GitHub Secrets:
+  #      DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_PATH
+  # ──────────────────────────────────────────────────────────────────────────
+  deploy:
+    needs: [test, package-deploy]
+    runs-on: ubuntu-latest
+    if: |
+      github.ref == 'refs/heads/master'
+      && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+      && (github.event_name != 'workflow_dispatch' || inputs.run-deploy)
+    environment: production
+    steps:
+      - name: Download deploy package
+        uses: actions/download-artifact@v4
+        with:
+          name: tingchenggis-deploy
+          path: deploy-pkg
+
+      - name: Extract package
+        run: |
+          cd deploy-pkg
+          unzip -o tingchenggis-deploy.zip -d tingchenggis
+          ls -la tingchenggis/
+
+      - name: Deploy via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          source: "deploy-pkg/tingchenggis/*"
+          target: "${{ secrets.DEPLOY_PATH }}"
+          strip_components: 2
+
+      - name: Restart service
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT || '22' }}
+          script: |
+            echo "[INFO] Restarting TingChengGIS on ${{ secrets.DEPLOY_HOST }}..."
+            if command -v systemctl &> /dev/null && systemctl is-enabled tingchenggis &> /dev/null; then
+              sudo systemctl restart tingchenggis
+              sudo systemctl status tingchenggis --no-pager | head -20
+            elif command -v supervisorctl &> /dev/null; then
+              supervisorctl restart tingchenggis
+            else
+              # Fallback: kill and restart via nohup
+              pkill -f tingchenggis.jar || true
+              sleep 2
+              cd ${{ secrets.DEPLOY_PATH }}
+              nohup java -Dfile.encoding=UTF-8 -jar tingchenggis.jar \
+                --spring.config.additional-location=application-demo.yml \
+                > logs/startup.log 2>&1 &
+              echo "[INFO] Process started, PID=$!"
+            fi
+            echo "✅ Deployment complete"
+
+      - name: Health check
+        run: |
+          timeout 60 sh -c 'until curl -sf http://${{ secrets.DEPLOY_HOST }}:8092/actuator/health; do sleep 3; done'
+          echo "✅ Service is healthy"

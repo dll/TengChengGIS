@@ -1,0 +1,55 @@
+﻿server:
+  port: 8092
+  servlet:
+    context-path:
+
+spring:
+  application:
+    name: tingchenggis
+
+  datasource:
+    url: jdbc:h2:file:./data/tingcheng;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+logging:
+  charset:
+    console: UTF-8
+    file: UTF-8
+  level:
+    root: INFO
+    com.tingchenggis: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+  file:
+    name: logs/tingcheng.log
+    max-size: 10MB
+
+tingcheng:
+  # 锁定 AI 提供者为 deepseek（与 application.yml 默认一致）
+  ai:
+    active-provider: deepseek
+  jwt:
+    secret: "tingcheng-gis-demo-secret-key-2024-chuzhou"
+    expiration-ms: 86400000
