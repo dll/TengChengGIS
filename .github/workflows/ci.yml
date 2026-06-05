@@ -212,27 +212,37 @@ jobs:
           choco install wixtoolset --no-progress -y
           echo "WiX installed"
 
+      - name: Create custom jpackage cfg (with $APPDIR paths)
+        run: |
+          New-Item -ItemType Directory -Path resource -Force | Out-Null
+          @'
+[Application]
+app.mainjar=$APPDIR\tingchenggis.jar
+
+[JavaOptions]
+java-options=-Djpackage.app-version=1.0.1
+java-options=-Dfile.encoding=UTF-8
+java-options=-Xmx1024m
+java-options=-Dspring.config.additional-location=file:$APPDIR/application-demo.yml
+'@ | Set-Content -Path resource\TingChengGIS.cfg -Encoding UTF8
+          Write-Output "Custom cfg created:"
+          Get-Content resource\TingChengGIS.cfg
+
       - name: Build portable app-image (EXE)
         run: |
-          jpackage --type app-image --name TingChengGIS --app-version 1.0.0 `
+          jpackage --type app-image --name TingChengGIS --app-version 1.0.1 `
             --input staging --main-jar tingchenggis.jar `
-            --main-class com.tingchenggis.tingcheng.TingChengGISTingChengApplication `
             --runtime-image jre --win-console `
-            --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m" `
-            --java-options "-Dspring.config.additional-location=file:app/application-demo.yml" `
-            --vendor "TingChengGIS" --dest output
+            --resource-dir resource --vendor "TingChengGIS" --dest output
           echo "app-image created"
 
       - name: Build MSI installer
         run: |
           $env:Path += ";${env:ProgramFiles(x86)}\WiX Toolset v3.14\bin"
-          jpackage --type msi --name TingChengGIS --app-version 1.0.0 `
+          jpackage --type msi --name TingChengGIS --app-version 1.0.1 `
             --input staging --main-jar tingchenggis.jar `
-            --main-class com.tingchenggis.tingcheng.TingChengGISTingChengApplication `
             --runtime-image jre --win-console --win-menu --win-shortcut `
-            --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m" `
-            --java-options "-Dspring.config.additional-location=file:app/application-demo.yml" `
-            --vendor "TingChengGIS" --dest output
+            --resource-dir resource --vendor "TingChengGIS" --dest output
           echo "MSI created"
 
       - name: Upload portable app-image artifact
@@ -310,7 +320,7 @@ jobs:
             echo '|------|------|----------|'
             echo '| `tingchenggis-deploy.zip` | 完整部署包（JAR + 启动脚本 + JRE + 配置） | 解压后双击 Start-TingChengGIS.bat 启动 |'
             echo '| `tingchenggis-portable.zip` | 免安装便携版（TingChengGIS.exe 启动器） | 解压后双击 TingChengGIS.exe 直接运行 |'
-            echo '| `TingChengGIS-1.0.0.msi` | Windows 安装程序 | 安装后从开始菜单/桌面快捷方式启动 |'
+            echo "| \`TingChengGIS-${TAG#v}.msi\` | Windows 安装程序 | 安装后从开始菜单/桌面快捷方式启动 |"
             echo ''
             echo '### 系统要求'
             echo '- Windows 10/11 64位'

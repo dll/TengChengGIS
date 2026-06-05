@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.tingchenggis</groupId>
     <artifactId>tingchenggis</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <name>TingChengGIS</name>
     <description>滁州亭城GIS项目 - 结合醉翁亭记文化与现代GIS技术</description>
     <properties>
