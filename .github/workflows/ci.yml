@@ -129,6 +129,29 @@ jobs:
           chmod +x deploy/*.bat
           echo "${{ github.sha }}" > deploy/VERSION
 
+      - name: Download JRE 21 (Windows x64) for embedded use
+        run: |
+          echo "[INFO] Downloading Eclipse Temurin JRE 21 for Windows x64..."
+          curl -sL "https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jre/hotspot/normal/eclipse" \
+            -o /tmp/jre21-windows.zip --connect-timeout 30 --max-time 120
+          echo "[INFO] Extracting JRE..."
+          mkdir -p /tmp/jre-extract
+          unzip -q /tmp/jre21-windows.zip -d /tmp/jre-extract
+          JRE_DIR=$(find /tmp/jre-extract -maxdepth 2 -name "jre" -type d | head -1)
+          if [ -z "$JRE_DIR" ]; then
+            # jdk含jre的路径不同，尝试 jdk-*/ 下的 jre 目录
+            JRE_DIR=$(find /tmp/jre-extract -maxdepth 3 -path "*/jre" -type d | head -1)
+          fi
+          if [ -n "$JRE_DIR" ]; then
+            mv "$JRE_DIR" deploy/jre
+            rm -rf /tmp/jre21-windows.zip /tmp/jre-extract
+            echo "[OK] JRE 21 bundled ($(du -sh deploy/jre | cut -f1))"
+          else
+            echo "[WARN] JRE directory not found; JRE will need manual download"
+            ls -la /tmp/jre-extract/
+            rm -rf /tmp/jre21-windows.zip /tmp/jre-extract
+          fi
+
       - name: Package deploy ZIP
         run: |
           cd deploy
