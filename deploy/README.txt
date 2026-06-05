@@ -4,37 +4,30 @@
 ===============================================================================
 
 【Quick Start】
-1. Double click "Start-TingChengGIS.bat" to start
-2. Wait for health check, browser will open automatically
-3. If browser doesn't open, manually visit http://localhost:8092
+1. Unzip the deploy package to any folder
+2. Double click "Start-TingChengGIS.bat" to start
+3. Wait for health check, browser will open automatically
+4. If browser doesn't open, manually visit http://localhost:8092
 
 【Login Info】
 Admin: 419116 / 419116
 User:  206004 / 206004
 
-【Optional: Embedded JRE (Recommended)】
-For completely no-install experience on Windows:
+【Embedded JRE】
+JRE 21 (Eclipse Temurin) is bundled in the jre/ folder.
+No manual Java installation required — just unzip and run.
 
-1. Download JRE 21
-   Download: https://adoptium.net/temurin/releases/?version=21
-   Select: Windows x64 JRE
-
-2. Extract the ZIP file
-3. Rename folder to "jre"
-4. Copy "jre" folder to this directory (same level as Start-TingChengGIS.bat)
-5. Double click "Start-TingChengGIS.bat"
-
-Final structure:
+Directory structure after unzip:
 TingChengGIS/
 ├── Start-TingChengGIS.bat
 ├── Stop-TingChengGIS.bat
 ├── tingchenggis.jar
 ├── application-demo.yml
-├── jre/              ← Put here
+├── jre/              ← Embedded JRE (included)
 │   └── bin/
 │       └── java.exe
 ├── data/
-│   └── 千亭.xlsx
+│   └── 千亭.xlsx     ← Import this file on first run
 └── logs/
 
 【Data Persistence】
