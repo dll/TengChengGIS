@@ -261,10 +261,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download all artifacts
+      - name: Download deploy package
         uses: actions/download-artifact@v4
         with:
-          path: artifacts
+          name: tingchenggis-deploy
+          path: artifacts/tingchenggis-deploy
+
+      - name: Download portable app-image
+        uses: actions/download-artifact@v4
+        with:
+          name: tingchenggis-portable
+          path: artifacts/tingchenggis-portable
+
+      - name: Download MSI installer
+        uses: actions/download-artifact@v4
+        with:
+          name: tingchenggis-msi
+          path: artifacts/tingchenggis-msi
 
       - name: Organize release files
         run: |
@@ -272,9 +285,10 @@ jobs:
           # Deploy package
           cp artifacts/tingchenggis-deploy/tingchenggis-deploy.zip release/
           cp artifacts/tingchenggis-deploy/tingchenggis-deploy.zip.sha256 release/
-          # Portable
-          cp -r artifacts/tingchenggis-portable release/tingchenggis-portable
-          cd release && zip -9 -r tingchenggis-portable.zip tingchenggis-portable && rm -rf tingchenggis-portable && cd ..
+          # Portable — ZIP the app-image directory
+          cd artifacts/tingchenggis-portable
+          zip -9 -r ../../release/tingchenggis-portable.zip .
+          cd ../..
           # MSI
           cp artifacts/tingchenggis-msi/*.msi release/
           ls -lh release/
