@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-setlocal EnableExtensions EnableDelayedExpansion
+setlocal EnableExtensions
 title TingChengGIS System - Stop
 
 echo ================================================================================
@@ -20,8 +20,8 @@ for /f "skip=1 tokens=2 delims=," %%a in ('
 
 if defined PID (
     echo [INFO] Stopping process PID=%PID%...
-    taskkill /f /pid !PID! >nul 2>&1
-    if !errorlevel! equ 0 (
+    taskkill /f /pid %PID% >nul 2>&1
+    if not errorlevel 1 (
         echo [OK] Application stopped
     ) else (
         echo [FAILED] Automatic stop failed. Please manually close the TingChengGIS window.
