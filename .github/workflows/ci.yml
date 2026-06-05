@@ -219,7 +219,7 @@ jobs:
             --main-class com.tingchenggis.tingcheng.TingChengGISTingChengApplication `
             --runtime-image jre --win-console `
             --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m" `
-            --java-options "--spring.config.additional-location=file:app/application-demo.yml" `
+            --java-options "-Dspring.config.additional-location=file:app/application-demo.yml" `
             --vendor "TingChengGIS" --dest output
           echo "app-image created"
 
@@ -231,7 +231,7 @@ jobs:
             --main-class com.tingchenggis.tingcheng.TingChengGISTingChengApplication `
             --runtime-image jre --win-console --win-menu --win-shortcut `
             --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m" `
-            --java-options "--spring.config.additional-location=file:app/application-demo.yml" `
+            --java-options "-Dspring.config.additional-location=file:app/application-demo.yml" `
             --vendor "TingChengGIS" --dest output
           echo "MSI created"
 
