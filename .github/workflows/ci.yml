@@ -169,23 +169,23 @@ jobs:
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
           {
-            echo "notes<<EOF"
+            echo 'notes<<EOF'
             echo "## TingChengGIS $TAG"
-            echo ""
-            echo "### 构建信息"
+            echo ''
+            echo '### 构建信息'
             echo "- Commit: \`${{ github.sha }}\`"
             echo "- 构建日期: $(date -u '+%Y-%m-%d %H:%M UTC')"
-            echo ""
-            echo "### 下载"
-            echo "- \`tingchenggis-deploy.zip\` — 完整部署包（JAR + 启动脚本 + 配置）"
-            echo "- \`tingchenggis-deploy.zip.sha256\` — 校验文件"
-            echo ""
-            echo "### 部署方式"
-            echo "1. 下载 \`tingchenggis-deploy.zip\` 并解压到部署目录"
-            echo "2. 将 \`data/千亭.xlsx\` 放入与 JAR 同级的 \`data/\` 目录"
-            echo "3. 双击 \`Start-TingChengGIS.bat\` 启动"
-            echo "4. 浏览器访问 http://localhost:8092"
-            echo "EOF
+            echo ''
+            echo '### 下载'
+            echo '- `tingchenggis-deploy.zip` — 完整部署包（JAR + 启动脚本 + 配置）'
+            echo '- `tingchenggis-deploy.zip.sha256` — 校验文件'
+            echo ''
+            echo '### 部署方式'
+            echo '1. 下载 `tingchenggis-deploy.zip` 并解压到部署目录'
+            echo '2. 将 `data/千亭.xlsx` 放入与 JAR 同级的 `data/` 目录'
+            echo '3. 双击 `Start-TingChengGIS.bat` 启动'
+            echo '4. 浏览器访问 http://localhost:8092'
+            echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
       - name: Create Release
