@@ -170,10 +170,90 @@ jobs:
           retention-days: 30
 
   # ──────────────────────────────────────────────────────────────────────────
-  # 4. Release — Create GitHub Release (only on tag push v*)
+  # 4. Installer — Build portable EXE (app-image) + MSI installer (Windows)
+  # ──────────────────────────────────────────────────────────────────────────
+  package-installer:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tingchenggis-jar
+          path: staging
+
+      - name: Rename JAR and prepare staging
+        run: |
+          Move-Item -Path staging\*.jar -Destination staging\tingchenggis.jar -Force
+          Copy-Item -Path deploy\application-demo.yml -Destination staging\application-demo.yml
+          New-Item -ItemType Directory -Path staging\data -Force | Out-Null
+          New-Item -ItemType Directory -Path staging\logs -Force | Out-Null
+          echo "Staging ready"
+
+      - name: Download JRE 21 for bundling
+        run: |
+          curl -sL "https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jre/hotspot/normal/eclipse" -o jre.zip
+          Expand-Archive -Path jre.zip -DestinationPath jre-extract
+          $jreDir = Get-ChildItem -Path jre-extract -Directory | Select-Object -First 1
+          Move-Item -Path "$($jreDir.FullName)" -Destination jre -Force
+          echo "JRE downloaded"
+
+      - name: Install WiX Toolset (for MSI)
+        run: |
+          choco install wixtoolset --no-progress -y
+          echo "WiX installed"
+
+      - name: Build portable app-image (EXE)
+        run: |
+          jpackage --type app-image --name TingChengGIS --app-version 1.0.0 `
+            --input staging --main-jar tingchenggis.jar `
+            --main-class com.tingchenggis.tingcheng.TingChengGISTingChengApplication `
+            --runtime-image jre --win-console `
+            --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m" `
+            --java-options "--spring.config.additional-location=file:app/application-demo.yml" `
+            --vendor "TingChengGIS" --dest output
+          echo "app-image created"
+
+      - name: Build MSI installer
+        run: |
+          $env:Path += ";${env:ProgramFiles(x86)}\WiX Toolset v3.14\bin"
+          jpackage --type msi --name TingChengGIS --app-version 1.0.0 `
+            --input staging --main-jar tingchenggis.jar `
+            --main-class com.tingchenggis.tingcheng.TingChengGISTingChengApplication `
+            --runtime-image jre --win-console --win-menu --win-shortcut `
+            --java-options "-Dfile.encoding=UTF-8" --java-options "-Xmx1024m" `
+            --java-options "--spring.config.additional-location=file:app/application-demo.yml" `
+            --vendor "TingChengGIS" --dest output
+          echo "MSI created"
+
+      - name: Upload portable app-image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tingchenggis-portable
+          path: output/TingChengGIS/
+          retention-days: 30
+
+      - name: Upload MSI installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tingchenggis-msi
+          path: output/*.msi
+          retention-days: 30
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 5. Release — Create GitHub Release (only on tag push v*)
   # ──────────────────────────────────────────────────────────────────────────
   release:
-    needs: [test, package-deploy]
+    needs: [test, package-deploy, package-installer]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
@@ -181,11 +261,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download deploy package
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: tingchenggis-deploy
-          path: release-artifacts
+          path: artifacts
+
+      - name: Organize release files
+        run: |
+          mkdir -p release
+          # Deploy package
+          cp artifacts/tingchenggis-deploy/tingchenggis-deploy.zip release/
+          cp artifacts/tingchenggis-deploy/tingchenggis-deploy.zip.sha256 release/
+          # Portable
+          cp -r artifacts/tingchenggis-portable release/tingchenggis-portable
+          cd release && zip -9 -r tingchenggis-portable.zip tingchenggis-portable && rm -rf tingchenggis-portable && cd ..
+          # MSI
+          cp artifacts/tingchenggis-msi/*.msi release/
+          ls -lh release/
 
       - name: Generate release notes
         id: notes
@@ -199,15 +291,24 @@ jobs:
             echo "- Commit: \`${{ github.sha }}\`"
             echo "- 构建日期: $(date -u '+%Y-%m-%d %H:%M UTC')"
             echo ''
-            echo '### 下载'
-            echo '- `tingchenggis-deploy.zip` — 完整部署包（JAR + 启动脚本 + 配置）'
-            echo '- `tingchenggis-deploy.zip.sha256` — 校验文件'
+            echo '### 下载选项'
+            echo '| 格式 | 说明 | 适用场景 |'
+            echo '|------|------|----------|'
+            echo '| `tingchenggis-deploy.zip` | 完整部署包（JAR + 启动脚本 + JRE + 配置） | 解压后双击 Start-TingChengGIS.bat 启动 |'
+            echo '| `tingchenggis-portable.zip` | 免安装便携版（TingChengGIS.exe 启动器） | 解压后双击 TingChengGIS.exe 直接运行 |'
+            echo '| `TingChengGIS-1.0.0.msi` | Windows 安装程序 | 安装后从开始菜单/桌面快捷方式启动 |'
+            echo ''
+            echo '### 系统要求'
+            echo '- Windows 10/11 64位'
+            echo '- 无需预装 Java（JRE 已内置）'
+            echo '- 4GB+ 内存推荐'
             echo ''
             echo '### 部署方式'
-            echo '1. 下载 `tingchenggis-deploy.zip` 并解压到部署目录'
-            echo '2. 将 `data/千亭.xlsx` 放入与 JAR 同级的 `data/` 目录'
-            echo '3. 双击 `Start-TingChengGIS.bat` 启动'
-            echo '4. 浏览器访问 http://localhost:8092'
+            echo '**ZIP 部署包：** 解压 → 双击 `Start-TingChengGIS.bat` → 浏览器访问 http://localhost:8092'
+            echo ''
+            echo '**便携版：** 解压 → 双击 `TingChengGIS.exe` → 自动打开浏览器'
+            echo ''
+            echo '**MSI 安装：** 运行安装程序 → 从开始菜单启动 → 浏览器访问 http://localhost:8092'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
@@ -218,8 +319,10 @@ jobs:
           name: "TingChengGIS ${{ github.ref_name }}"
           body: ${{ steps.notes.outputs.notes }}
           files: |
-            release-artifacts/tingchenggis-deploy.zip
-            release-artifacts/tingchenggis-deploy.zip.sha256
+            release/tingchenggis-deploy.zip
+            release/tingchenggis-deploy.zip.sha256
+            release/tingchenggis-portable.zip
+            release/*.msi
           draft: false
           prerelease: false
           generate_release_notes: false
