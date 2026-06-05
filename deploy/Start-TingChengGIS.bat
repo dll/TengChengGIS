@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-setlocal EnableExtensions EnableDelayedExpansion
+setlocal EnableExtensions
 title TingChengGIS System
 
 set "APP_DIR=%~dp0"
@@ -16,7 +16,7 @@ set "XLSX_FILE=data\千亭.xlsx"
 :check_port
 echo [CHECK] Checking port 8092...
 netstat -ano | findstr ":8092 " >nul 2>&1
-if !errorlevel! equ 0 (
+if not errorlevel 1 (
     echo [ERROR] Port 8092 is already in use!
     echo.
     netstat -ano | findstr ":8092 "
@@ -32,7 +32,7 @@ if exist "%APP_DIR%jre\bin\java.exe" (
     set "JAVA=%APP_DIR%jre\bin\java.exe"
 ) else (
     where java >nul 2>&1
-    if !errorlevel! neq 0 (
+    if errorlevel 1 (
         echo [ERROR] Java 21 not found!
         echo.
         echo Download JRE 21 from https://adoptium.net/temurin/releases/?version=21
@@ -87,13 +87,13 @@ set RETRY_COUNT=0
 
 :health_loop
 set /a RETRY_COUNT+=1
-if !RETRY_COUNT! gtr !MAX_RETRIES! (
+if %RETRY_COUNT% gtr %MAX_RETRIES% (
     echo [ERROR] Service failed to start after 150 seconds.
     echo Check logs\tingcheng.log for details.
     pause
     exit /b 1
 )
-powershell -NoProfile -Command "try { `$r = Invoke-WebRequest -Uri '%HEALTH_URL%' -UseBasicParsing -TimeoutSec 5; if (`$r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
+powershell -NoProfile -Command "try { $r = Invoke-WebRequest -Uri '%HEALTH_URL%' -UseBasicParsing -TimeoutSec 5; if ($r.StatusCode -eq 200) { exit 0 } else { exit 1 } } catch { exit 1 }" >nul 2>&1
 if errorlevel 1 (
     timeout /t 5 /nobreak >nul
     goto health_loop
@@ -114,7 +114,7 @@ if exist "%XLSX_FILE%" (
              $m.Add($s,'file','千亭.xlsx'); ^
              $r=$c.PostAsync($u,$m).Result; ^
              if($r.IsSuccessStatusCode){exit 0}else{exit 1}" >nul 2>&1
-        if !errorlevel! equ 0 (
+        if not errorlevel 1 (
             echo [OK] Pavilion data imported successfully!
             echo. > "data\.imported"
         ) else (

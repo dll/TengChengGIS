@@ -12,13 +12,11 @@ set PROJECT_DIR=%~dp0..
 set DEPLOY_DIR=%PROJECT_DIR%\deploy
 set TARGET_DIR=%PROJECT_DIR%\target
 
-echo [1/5] 清理旧的部署包...
-if exist "%DEPLOY_DIR%" (
-    rmdir /s /q "%DEPLOY_DIR%"
-    echo   已清理旧部署包
-)
-mkdir "%DEPLOY_DIR%"
-mkdir "%DEPLOY_DIR%\data"
+echo [1/5] 清理旧的构建产物...
+if not exist "%DEPLOY_DIR%" mkdir "%DEPLOY_DIR%"
+if exist "%DEPLOY_DIR%\tingchenggis.jar" del "%DEPLOY_DIR%\tingchenggis.jar"
+if exist "%DEPLOY_DIR%\data\千亭.xlsx" del "%DEPLOY_DIR%\data\千亭.xlsx"
+echo   已清理旧构建产物
 
 echo.
 echo [2/5] 编译项目...
@@ -34,33 +32,21 @@ echo   编译成功
 echo.
 echo [3/5] 复制文件...
 
-REM 复制 JAR 文件
+REM 复制 JAR 文件（从 target/ 到 deploy/）
 copy "%TARGET_DIR%\tingchenggis-1.0.0.jar" "%DEPLOY_DIR%\tingchenggis.jar" >nul
 echo   已复制主程序
 
-REM 复制数据文件
+REM 复制数据文件（从 data/ 到 deploy/data/）
+if not exist "%DEPLOY_DIR%\data" mkdir "%DEPLOY_DIR%\data"
 if exist "%PROJECT_DIR%\data\千亭.xlsx" (
     copy "%PROJECT_DIR%\data\千亭.xlsx" "%DEPLOY_DIR%\data\" >nul
     echo   已复制演示数据
 )
 
-REM 复制配置文件
-copy "%PROJECT_DIR%\deploy\application-demo.yml" "%DEPLOY_DIR%\" >nul
-echo   已复制配置文件
-
-REM 复制启动脚本
-copy "%PROJECT_DIR%\deploy\启动滁州亭城GIS.bat" "%DEPLOY_DIR%\" >nul
-echo   已复制启动脚本
-
-REM 复制说明文档
-copy "%PROJECT_DIR%\deploy\README.txt" "%DEPLOY_DIR%\" >nul
-copy "%PROJECT_DIR%\deploy\打包说明.md" "%DEPLOY_DIR%\" >nul
-echo   已复制说明文档
-
 echo.
-echo [4/5] 创建临时目录...
-mkdir "%DEPLOY_DIR%\logs" 2>nul
-mkdir "%DEPLOY_DIR%\temp" 2>nul
+echo [4/5] 创建运行时目录...
+if not exist "%DEPLOY_DIR%\logs" mkdir "%DEPLOY_DIR%\logs"
+if not exist "%DEPLOY_DIR%\temp" mkdir "%DEPLOY_DIR%\temp"
 echo   目录创建完成
 
 echo.
