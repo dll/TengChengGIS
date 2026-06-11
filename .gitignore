@@ -46,3 +46,4 @@ deploy/data/*.xlsx
 deploy/data/gifs/*.gif
 deploy/logs/
 deploy/jre/
+*.msi
