@@ -47,3 +47,6 @@ deploy/data/gifs/*.gif
 deploy/logs/
 deploy/jre/
 *.msi
+
+# Build output
+output/

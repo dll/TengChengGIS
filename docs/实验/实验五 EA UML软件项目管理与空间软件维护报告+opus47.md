@@ -254,13 +254,13 @@ TingChengGIS项目 (1.0)
 
 #### 5.4.1 当前版本
 
-- **v1.0.0**（仓库 `pom.xml` 中 `<version>1.0.0</version>`）
-- 当前 git 历史只有两次提交，仍处于初始版本基线
+- **v1.0.4**（仓库 `pom.xml` 中 `<version>1.0.4</version>`）
+- 当前 git 历史包含 CI/CD 流水线构建、一键部署脚本、多种发布格式支持
 
 #### 5.4.2 后续语义化版本规划
 
 ```
-v1.0.0  (current)  初始版本，核心功能 + 175→279 测试，已含 JaCoCo + 环境变量注入
+v1.0.4  (current)  CI/CD 全自动流水线 + 三种发布格式（ZIP/EXE/MSI）+ 嵌入式 JRE
 v1.1.x             JaCoCo 阈值化 + JWT 强制环境变量 + OSRM 缓存
 v1.2.x             PostGIS 几何列迁移 + 空间索引
 v2.0.x             移动端 / 多语言 / 实时推送
@@ -340,7 +340,7 @@ CREATE TABLE pavilion_collectors (
 
 | 原报告 | 实际情况 |
 |--------|---------|
-| `v1.0.0/v1.1.0/v1.1.1` 多版本历史 | git 仅 2 次提交，仍在 v1.0.0 |
+| `v1.0.0/v1.1.0/v1.1.1` 多版本历史 | 当前已发布 v1.0.4，含完整 CI/CD 流水线 |
 | 已建立 develop / feature / hotfix / release 分支 | 当前只有 master |
 | 备份策略中 `application.yml` 直接入 Git 仓库 | 当前仓库 API key/DB 密码已通过 `${TINGCHENG_*}` 环境变量注入；JWT secret 仍带弱默认值 |
 | TSP 50+ 点性能基准 | 仓库无该基准 |

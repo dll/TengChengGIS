@@ -83,7 +83,7 @@ mvn spring-boot:run
 mvn clean package -DskipTests -B
 
 # 运行
-java -jar target/tingchenggis-1.0.0.jar --spring.profiles.active=prod
+java -jar target/tingchenggis-*.jar --spring.profiles.active=prod
 ```
 
 ### 2.3 生产环境部署
@@ -214,14 +214,18 @@ TINGCHENG_JWT_SECRET=Your-JWT-Secret-Key-At-Least-32-Chars!!
 ### 4.1 流水线概览
 
 ```
-push/PR → [test] → [docker & E2E] → [deploy（可选）]
+push/PR → [test] → [docker] → [package-deploy] → [package-installer] → [release*] → [deploy（可选）]
+                                                                       ↑ tag v* 触发
 ```
 
 | 阶段 | 任务 | 触发条件 |
 |------|------|----------|
-| test | Maven 后端测试 + JAR 打包 + Vitest 前端测试 | push 到 master/develop 或 PR 到 master |
-| docker & E2E | 构建 Docker 镜像 + 健康检查 + Playwright E2E 测试 | test 通过 |
-| deploy | SSH 部署到服务器（需手动启用） | master 分支，需配置 Secrets |
+| test | Vitest 前端测试 + Maven 后端测试 + JAR 打包 | push 到 master/develop 或 PR 到 master |
+| docker | 构建 Docker 镜像 + 健康检查 + Playwright E2E | test 通过 |
+| package-deploy | 组装 deploy ZIP（JAR + 启动脚本 + config + JRE） | test 通过 |
+| package-installer | jpackage 构建便携版 EXE + MSI 安装包 (Windows) | test 通过 |
+| release | 创建 GitHub Release，附加 ZIP + 便携版 + MSI 三种格式 | tag v* 推送 |
+| deploy | SSH 部署到服务器（需 Secrets） | master 分支，需配置 Secrets |
 
 ### 4.2 GitHub Secrets 配置
 

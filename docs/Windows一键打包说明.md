@@ -31,51 +31,41 @@ If user has Java 21 installed, no need to download JRE - just double click to st
 
 ---
 
-## 🔧 How to create full package (with JRE)
+## 🔧 How to create full package (with embedded JRE)
 
-### Step 1: Download JRE
+> JRE 21 (Eclipse Temurin) is already pre-bundled at `deploy/jre/`.
+> To update the JRE, download from https://adoptium.net/temurin/releases/?version=21
+> and extract to `deploy/jre/`.
 
-Visit: https://adoptium.net/temurin/releases/?version=21
+### Final structure after running build script:
 
-Select:
-- Version: 21 (LTS)
-- Operating System: Windows
-- Architecture: x64
-- JRE/JDK: JRE
-
-Download file like: `OpenJDK21U-jre_x64_windows_hotspot_21.0.5_7.zip`
-
-### Step 2: Extract and place JRE
-
-1. Extract the downloaded ZIP file
-2. Rename the extracted folder to `jre`
-3. Copy `jre` folder to `deploy/` directory
-
-Final structure:
 ```
 deploy/
 ├── Start-TingChengGIS.bat
+├── Stop-TingChengGIS.bat
 ├── tingchenggis.jar
 ├── README.txt
-├── jre/              ← Place here
+├── application-demo.yml
+├── VERSION
+├── jre/              ← Embedded JRE (pre-included)
 │   ├── bin/
 │   │   └── java.exe
 │   └── ...
-└── data/
-    └── 千亭.xlsx
+├── data/
+│   └── 千亭.xlsx
+├── logs/             ← Auto-created at runtime
+└── temp/             ← Auto-created at runtime
+
+output/
+└── TingChengGIS-v{version}.zip   ← Distribution package
 ```
 
-### Step 3: Test startup
+### Test startup
 
 1. Go to `deploy/` directory
 2. Double click `Start-TingChengGIS.bat`
 3. Verify application starts normally
-
-### Step 4: Package and distribute
-
-1. Rename `deploy/` folder to `TingChengGIS`
-2. Compress the whole folder to `TingChengGIS.zip`
-3. Distribute to users
+4. Browser opens http://localhost:8092 automatically after ~35s
 
 ---
 
@@ -145,16 +135,37 @@ Optional addition:
 
 ---
 
-## 🚀 Quick Package Workflow
+## 🚀 One-Click Package (Recommended)
+
+Use the automated build script (no manual steps needed):
+
+```bash
+# Batch version (double-click to run):
+scripts\build-deploy-package.bat
+
+# PowerShell version:
+powershell -File scripts\build-deploy-package.ps1
+```
+
+The script automates all 6 steps:
+1. Detect version from `pom.xml`
+2. Clean old artifacts
+3. Compile project (`mvn clean package -DskipTests`)
+4. Copy JAR + demo data to `deploy/`
+5. Check embedded JRE (pre-included in `deploy/jre`)
+6. Validate & package → `output/TingChengGIS-v{version}.zip`
+
+## 🚀 Manual Package Workflow
 
 ```bash
 # 1. Compile project
 mvn clean package -DskipTests
 
 # 2. Copy JAR to deploy
-copy target\tingchenggis-1.0.0.jar deploy\tingchenggis.jar
+copy target\tingchenggis-*.jar deploy\tingchenggis.jar
 
 # 3. Download and extract JRE to deploy/jre
+#    (already done - jre/ is pre-bundled)
 
 # 4. Test startup
 cd deploy
@@ -168,7 +179,7 @@ Start-TingChengGIS.bat
 
 ## ✨ Version Info
 
-- Version: 1.0.0
+- Version: 1.0.5
 - Java: 21+
 - Fixes:
   - ✅ Favicon 404 error
