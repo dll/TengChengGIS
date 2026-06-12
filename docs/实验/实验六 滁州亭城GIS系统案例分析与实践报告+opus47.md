@@ -181,9 +181,9 @@ $ mvn -q test
 
 ```bash
 mvn clean package -DskipTests
-# 产物：target/tingchenggis-1.0.0.jar
+# 产物：target/tingchenggis-*.jar
 
-java -jar target/tingchenggis-1.0.0.jar
+java -jar target/tingchenggis-*.jar
 # 启动后访问：
 #   主页:        http://localhost:8092
 #   H2 控制台:   http://localhost:8092/h2-console
@@ -215,7 +215,7 @@ java -jar target/tingchenggis-1.0.0.jar
 | 类别 | 交付物 | 说明 |
 |------|--------|------|
 | 源代码 | 全部 Java + HTML 源码 | 100 Java + 1 主 HTML + 配置 |
-| 可运行包 | `tingchenggis-1.0.0.jar` | Spring Boot fat jar |
+| 可运行包 | `tingchenggis-*.jar` | Spring Boot fat jar |
 | 测试结果 | 279 个 @Test 全部通过 | `mvn test` 输出 |
 | 设计文档 | UML 模型 + 6 份实验报告（opus47） | `docs/实验/` |
 | 配置文件 | `application.yml` | dev/prod 双 profile |

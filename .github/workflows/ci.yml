@@ -220,7 +220,7 @@ jobs:
 app.mainjar=$APPDIR\tingchenggis.jar
 
 [JavaOptions]
-java-options=-Djpackage.app-version=1.0.4
+java-options=-Djpackage.app-version=1.0.5
 java-options=-Dfile.encoding=UTF-8
 java-options=-Xmx1024m
 java-options=-Dspring.config.additional-location=file:$APPDIR/application-demo.yml
@@ -230,7 +230,7 @@ java-options=-Dspring.config.additional-location=file:$APPDIR/application-demo.y
 
       - name: Build portable app-image (EXE)
         run: |
-          jpackage --type app-image --name TingChengGIS --app-version 1.0.4 `
+          jpackage --type app-image --name TingChengGIS --app-version 1.0.5 `
             --input staging --main-jar tingchenggis.jar `
             --runtime-image jre --win-console `
             --resource-dir resource --vendor "TingChengGIS" --dest output
@@ -239,7 +239,7 @@ java-options=-Dspring.config.additional-location=file:$APPDIR/application-demo.y
       - name: Build MSI installer
         run: |
           $env:Path += ";${env:ProgramFiles(x86)}\WiX Toolset v3.14\bin"
-          jpackage --type msi --name TingChengGIS --app-version 1.0.4 `
+          jpackage --type msi --name TingChengGIS --app-version 1.0.5 `
             --input staging --main-jar tingchenggis.jar `
             --runtime-image jre --win-console --win-menu --win-shortcut `
             --resource-dir resource --vendor "TingChengGIS" --dest output

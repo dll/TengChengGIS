@@ -459,12 +459,12 @@ async function apiGet(url) {
 mvn -q -DskipTests package
 ```
 
-打包产物：`target/tingchenggis-1.0.0.jar`（fat jar，含嵌入式 Tomcat）。
+打包产物：`target/tingchenggis-*.jar`（fat jar，含嵌入式 Tomcat）。
 
 ### 6.2 启动
 
 ```bash
-java -jar target/tingchenggis-1.0.0.jar
+java -jar target/tingchenggis-*.jar
 # 或
 mvn spring-boot:run
 ```

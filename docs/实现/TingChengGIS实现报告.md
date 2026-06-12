@@ -1455,7 +1455,7 @@ mvn clean install
 mvn spring-boot:run
 
 # 或直接运行jar包
-java -jar target/tingchenggis-1.0.0.jar
+java -jar target/tingchenggis-*.jar
 ```
 
 ### 7.2 访问地址
