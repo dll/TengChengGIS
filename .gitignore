@@ -50,3 +50,6 @@ deploy/jre/
 
 # Build output
 output/
+
+# Raw data (xlsx, etc.)
+data/
